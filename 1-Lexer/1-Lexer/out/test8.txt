@@ -1,0 +1,12 @@
+
+IF
+LPAREN
+INT()
+GT
+INT()
+RPAREN
+THEN
+INT()
+ELSE
+INT()
+EOF

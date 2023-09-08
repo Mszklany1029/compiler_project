@@ -1,0 +1,17 @@
+
+LET
+TYPE
+ID(a)
+EQ
+ID(int)
+IN
+LET
+TYPE
+ID(a)
+EQ
+ID(string)
+IN
+INT()
+END
+END
+EOF
