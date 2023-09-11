@@ -7,15 +7,17 @@ fun err(p1,p2) = ErrorMsg.error p1
 
 fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos, pos) end
 
+val x = ref 0 : int ref
 
 %%
 %structure TigerLexFun
+%s COMMENT;
 %%
-\n	    => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
-var  	=> (Tokens.VAR(yypos, yypos + 3));
-","	=> (Tokens.COMMA(yypos, yypos + 1));
-"123"	=> (Tokens.INT(123, yypos, yypos + 3));
-.       => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
+<INITIAL> \n => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+<INITIAL> var => (Tokens.VAR(yypos, yypos + 3));
+<INITIAL> "," => (Tokens.COMMA(yypos, yypos + 1));
+<INITIAL> "123"	=> (Tokens.INT(123, yypos, yypos + 3));
+<INITIAL> . => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
 <INITIAL> "type" => (Tokens.TYPE(yypos,yypos + 4));
 <INITIAL> "var" => (Tokens.VAR(yypos,yypos + 3));
 <INITIAL> "function" => (Tokens.FUNCTION(yypos,yypos + 8));
@@ -56,8 +58,14 @@ var  	=> (Tokens.VAR(yypos, yypos + 3));
 <INITIAL> ";" => (Tokens.SEMICOLON(yypos,yypos + 1));
 <INITIAL> ":" => (Tokens.COLON(yypos,yypos + 1));
 <INITIAL> "," => (Tokens.COMMA(yypos,yypos + 1));
-<INITIAL>  => (Tokens.STRING(yypos,yypos));
+<INITIAL> " " => (Tokens.STRING(yytext, yypos, yypos));
 <INITIAL> [0-9] => (Tokens.INT(valOf(Int.fromString yytext), yypos, yypos + String.size yytext));
-<INITIAL> [a-z] => (Tokens.ID(yytext, yypos, yypose + String.size yytext));
-<INITIAL>  => (Tokens.EOF(yypos,yypos));
+<INITIAL> [a-z] => (Tokens.ID(yytext, yypos, yypos + String.size yytext));
 
+<INITIAL> "/*" => (YYBEGIN COMMENT; x := !x+1; continue());
+
+<COMMENT> "/*" => (x := !x + 1; continue());
+
+<COMMENT> "*/" => (x := !x-1; if !x = 0 then YYBEGIN INITIAL else ();continue());
+<COMMENT> . => (continue());
+<COMMENT> \n => (continue());

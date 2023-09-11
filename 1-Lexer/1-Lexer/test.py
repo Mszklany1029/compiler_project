@@ -17,43 +17,51 @@ child.expect("\n\-")
 child.send("CM.make \"sources.cm\";\n");
 child.expect("\n\-")
 
-total = 0;
-corr = 0;
+def runFiles(folder, expect):
+    total = 0;
+    corr = 0;
 
-for filename in os.listdir("./testcases/"):
-    total += 1;
+    for filename in os.listdir(folder):
+        total += 1;
 
-    print(filename)
-    cmd = "Parse.parse(\"./testcases/" + filename + "\");"
-    child.send(cmd + "\n")
-    child.expect_exact(cmd + "\r\n")
-    try:
-        res = child.expect(["(.*)\nval", "(Error)"], timeout=2)
-        res_m = child.match.group(1).decode().replace("\r", "")
-        res_f = ""
-        for line in res_m.splitlines():
-            no_num_line = re.sub("\s*\d*", "", line)
-            print(no_num_line)
-            res_f = res_f + "\n" + no_num_line
-        # print(res_m)
+        print(filename)
+        cmd = "Parse.parse(\"" + folder + filename + "\");"
+        child.send(cmd + "\n")
+        child.expect_exact(cmd + "\r\n")
+        try:
+            res = child.expect([ "(Error)", "(error)", "(.*)\nval"], timeout=2)
+            if res == expect:
+                res_m = child.match.group(1).decode().replace("\r", "")
+                res_f = ""
+                for line in res_m.splitlines():
+                    no_num_line = re.sub("\s*\d+$", "", line)
+                    res_f = res_f + "\n" + no_num_line
+                # print(res_m)
 
-        out_filename = "out/" + filename.replace(".tig", ".txt");
-        if len(sys.argv) >= 2 and sys.argv[1] == "--out":
-            with open(out_filename, "w") as out_file:
-                out_file.write(res_f);
-        else:
-            with open(out_filename, "r") as out_file:
-                correct = out_file.read();
-                if correct.strip() == res_f.strip():
-                    corr += 1;
-                    prGreen("\tCorrect");
+                out_filename = "out/" + filename.replace(".tig", ".txt");
+                if len(sys.argv) >= 2 and sys.argv[1] == "--out":
+                    with open(out_filename, "w") as out_file:
+                        out_file.write(res_f);
                 else:
-                    prRed("\tIncorrect");
-    except pexpect.TIMEOUT:
-                    prRed("\tTimeout");
+                    with open(out_filename, "r") as out_file:
+                        correct = out_file.read();
+                        if correct.strip() == res_f.strip():
+                            corr += 1;
+                            prGreen("\tCorrect");
+                        else:
+                            prRed("\tIncorrect");
+            else:
+                prRed("\tIncorrect");
+        except pexpect.TIMEOUT:
+                        prRed("\tTimeout");
 
-print(str(corr) + "/" + str(total))
+    return (corr, total)
 
+
+(c1, t1) = runFiles("./testcases/lex/", 2)
+(c2, t2) = runFiles("./testcases/nolex/", 0)
+
+print(str(c1 + c2) + "/" + str(t1 + t2))
 
 child.close()
 
