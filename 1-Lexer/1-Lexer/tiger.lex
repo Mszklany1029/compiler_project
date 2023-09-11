@@ -13,11 +13,12 @@ val x = ref 0 : int ref
 %structure TigerLexFun
 %s COMMENT;
 %%
-<INITIAL> \n => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
-<INITIAL> var => (Tokens.VAR(yypos, yypos + 3));
+<INITIAL> [\r?\n] => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
+
 <INITIAL> "," => (Tokens.COMMA(yypos, yypos + 1));
-<INITIAL> "123"	=> (Tokens.INT(123, yypos, yypos + 3));
-<INITIAL> . => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
+
+<INITIAL> "\ " => (continue());
+<INITIAL> "\t" => (continue());
 <INITIAL> "type" => (Tokens.TYPE(yypos,yypos + 4));
 <INITIAL> "var" => (Tokens.VAR(yypos,yypos + 3));
 <INITIAL> "function" => (Tokens.FUNCTION(yypos,yypos + 8));
@@ -43,7 +44,7 @@ val x = ref 0 : int ref
 <INITIAL> "<=" => (Tokens.LE(yypos,yypos + 2));
 <INITIAL> "<" => (Tokens.LT(yypos,yypos + 1));
 <INITIAL> "!=" => (Tokens.NEQ(yypos,yypos + 2));
-<INITIAL> "==" => (Tokens.EQ(yypos,yypos + 2));
+<INITIAL> "=" => (Tokens.EQ(yypos,yypos + 1));
 <INITIAL> "/" => (Tokens.DIVIDE(yypos,yypos + 1));
 <INITIAL> "*" => (Tokens.TIMES(yypos,yypos + 1));
 <INITIAL> "-" => (Tokens.MINUS(yypos,yypos + 1));
@@ -58,9 +59,9 @@ val x = ref 0 : int ref
 <INITIAL> ";" => (Tokens.SEMICOLON(yypos,yypos + 1));
 <INITIAL> ":" => (Tokens.COLON(yypos,yypos + 1));
 <INITIAL> "," => (Tokens.COMMA(yypos,yypos + 1));
-<INITIAL> " " => (Tokens.STRING(yytext, yypos, yypos));
-<INITIAL> [0-9] => (Tokens.INT(valOf(Int.fromString yytext), yypos, yypos + String.size yytext));
-<INITIAL> [a-z] => (Tokens.ID(yytext, yypos, yypos + String.size yytext));
+<INITIAL> "\"" => (Tokens.STRING(yytext, yypos, yypos));
+<INITIAL> [0-9]+ => (Tokens.INT(valOf(Int.fromString yytext), yypos, yypos + String.size yytext));
+<INITIAL> [a-zA-Z]+[a-zA-Z0-9_]* => (Tokens.ID(yytext, yypos, yypos + String.size yytext));
 
 <INITIAL> "/*" => (YYBEGIN COMMENT; x := !x+1; continue());
 
@@ -69,3 +70,6 @@ val x = ref 0 : int ref
 <COMMENT> "*/" => (x := !x-1; if !x = 0 then YYBEGIN INITIAL else ();continue());
 <COMMENT> . => (continue());
 <COMMENT> \n => (continue());
+
+<INITIAL> . => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
+
