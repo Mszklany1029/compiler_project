@@ -13,7 +13,7 @@ COLON
 ID(int)
 RBRACE
 VAR
-ID(rec)
+ID(rec1)
 COLON
 ID(rectype)
 ASSIGN
@@ -25,15 +25,15 @@ STRING(Nobody)
 COMMA
 ID(age)
 EQ
-INT()
+INT(1000)
 RBRACE
 IN
-ID(rec)
+ID(rec1)
 DOT
 ID(name)
 ASSIGN
 STRING(Somebody)
 SEMICOLON
-ID(rec)
+ID(rec1)
 END
 EOF

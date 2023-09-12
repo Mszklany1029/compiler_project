@@ -1,0 +1,24 @@
+Currently passing tests:
+ - 3
+ - 41
+ - 1
+ - 7
+ - 42
+ - 4
+ - 9
+ - 2
+
+Timing Out On:
+ - queens
+ - test5
+ - test8
+ - merge
+ - test10
+ - test6
+ - test51
+ - test101
+
+Things in the testcases that cause issues:
+ - test 10: error body of while not unit??
+ - test 51: multiline comments
+ - test101: unmatched comment

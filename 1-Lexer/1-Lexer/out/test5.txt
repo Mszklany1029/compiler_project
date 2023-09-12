@@ -45,7 +45,7 @@ ID(intlist)
 LBRACE
 ID(hd)
 EQ
-INT()
+INT(0)
 COMMA
 ID(tl)
 EQ

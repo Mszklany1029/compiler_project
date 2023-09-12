@@ -28,7 +28,7 @@ LET
 VAR
 ID(i)
 ASSIGN
-INT()
+INT(0)
 FUNCTION
 ID(isdigit)
 LPAREN
@@ -46,7 +46,7 @@ RPAREN
 GE
 ID(ord)
 LPAREN
-STRING()
+STRING(0)
 RPAREN
 AND
 ID(ord)
@@ -56,7 +56,7 @@ RPAREN
 LE
 ID(ord)
 LPAREN
-STRING()
+STRING(9)
 RPAREN
 FUNCTION
 ID(skipto)
@@ -66,7 +66,7 @@ EQ
 WHILE
 ID(buffer)
 EQ
-STRING()
+STRING( )
 OR
 ID(buffer)
 EQ
@@ -103,7 +103,7 @@ ID(i)
 ASSIGN
 ID(i)
 TIMES
-INT()
+INT(10)
 PLUS
 ID(ord)
 LPAREN
@@ -112,7 +112,7 @@ RPAREN
 MINUS
 ID(ord)
 LPAREN
-STRING()
+STRING(0)
 RPAREN
 SEMICOLON
 ID(buffer)
@@ -151,7 +151,7 @@ ID(any)
 LBRACE
 ID(any)
 EQ
-INT()
+INT(0)
 RBRACE
 VAR
 ID(i)
@@ -277,14 +277,14 @@ EQ
 IF
 ID(i)
 GT
-INT()
+INT(0)
 THEN
 LPAREN
 ID(f)
 LPAREN
 ID(i)
 DIVIDE
-INT()
+INT(10)
 RPAREN
 SEMICOLON
 ID(print)
@@ -295,13 +295,13 @@ ID(i)
 MINUS
 ID(i)
 DIVIDE
-INT()
+INT(10)
 TIMES
-INT()
+INT(10)
 PLUS
 ID(ord)
 LPAREN
-STRING()
+STRING(0)
 RPAREN
 RPAREN
 RPAREN
@@ -310,7 +310,7 @@ IN
 IF
 ID(i)
 LT
-INT()
+INT(0)
 THEN
 LPAREN
 ID(print)
@@ -328,7 +328,7 @@ ELSE
 IF
 ID(i)
 GT
-INT()
+INT(0)
 THEN
 ID(f)
 LPAREN
@@ -337,7 +337,7 @@ RPAREN
 ELSE
 ID(print)
 LPAREN
-STRING()
+STRING(0)
 RPAREN
 END
 FUNCTION
@@ -369,7 +369,7 @@ RPAREN
 SEMICOLON
 ID(print)
 LPAREN
-STRING()
+STRING( )
 RPAREN
 SEMICOLON
 ID(printlist)
@@ -380,13 +380,13 @@ ID(rest)
 RPAREN
 RPAREN
 VAR
-ID(list)
+ID(list1)
 ASSIGN
 ID(readlist)
 LPAREN
 RPAREN
 VAR
-ID(list)
+ID(list2)
 ASSIGN
 LPAREN
 ID(buffer)
@@ -404,9 +404,9 @@ ID(printlist)
 LPAREN
 ID(merge)
 LPAREN
-ID(list)
+ID(list1)
 COMMA
-ID(list)
+ID(list2)
 RPAREN
 RPAREN
 END

@@ -11,7 +11,7 @@ ID(a)
 EQ
 ID(string)
 IN
-INT()
+INT(0)
 END
 END
 EOF

@@ -1,7 +1,7 @@
 
 LET
 FUNCTION
-ID(do_nothing)
+ID(do_nothing1)
 LPAREN
 ID(a)
 COLON
@@ -15,17 +15,17 @@ COLON
 ID(int)
 EQ
 LPAREN
-ID(do_nothing)
+ID(do_nothing2)
 LPAREN
 ID(a)
 PLUS
-INT()
+INT(1)
 RPAREN
 SEMICOLON
-INT()
+INT(0)
 RPAREN
 FUNCTION
-ID(do_nothing)
+ID(do_nothing2)
 LPAREN
 ID(d)
 COLON
@@ -35,21 +35,21 @@ COLON
 ID(string)
 EQ
 LPAREN
-ID(do_nothing)
+ID(do_nothing1)
 LPAREN
 ID(d)
 COMMA
 STRING(str)
 RPAREN
 SEMICOLON
-STRING()
+STRING( )
 RPAREN
 IN
-ID(do_nothing)
+ID(do_nothing1)
 LPAREN
-INT()
+INT(0)
 COMMA
-STRING(str)
+STRING(str2)
 RPAREN
 END
 EOF

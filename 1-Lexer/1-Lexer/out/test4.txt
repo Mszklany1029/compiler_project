@@ -13,9 +13,9 @@ EQ
 IF
 ID(n)
 EQ
-INT()
+INT(0)
 THEN
-INT()
+INT(1)
 ELSE
 ID(n)
 TIMES
@@ -23,12 +23,12 @@ ID(nfactor)
 LPAREN
 ID(n)
 MINUS
-INT()
+INT(1)
 RPAREN
 IN
 ID(nfactor)
 LPAREN
-INT()
+INT(10)
 RPAREN
 END
 EOF
