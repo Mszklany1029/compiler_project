@@ -1,2 +1,2 @@
 Skeleton 5
-d2f5Cd"Char"ä¢ErrorMsg"ä¢Tokens"ä¢TextIO"ä¢Vector"Nad"TigerLexFun"h3aä¢yyInput"jh3aä¢TIO"gp1ÿ ad"TSIO"gp2ÿd"StreamIO"ad"TPIO"gp1d"TextPrimIO"è0aä¢UserDeclarations"ÿ‚bbd2egp1ÿ‚f9d"IO"ÿÿ‚ÿCd"List"d"Int"d"String"ÿÿ)Nf0f1ÿ
+d2f6d"Char"Cä¢ErrorMsg"ä¢Int"ä¢Tokens"ä¢TextIO"ä¢Vector"Nad"TigerLexFun"h3aä¢yyInput"jh3aä¢TIO"gp1ÿ&ad"TSIO"gp2ÿd"StreamIO"ad"TPIO"gp1d"TextPrimIO"è0aä¢UserDeclarations"ÿ‚bbd2egp1ÿ‚f9d"IO"ÿÿ‚ÿCd"List"ÿd"String"ÿÿ/Nf0f1ÿ

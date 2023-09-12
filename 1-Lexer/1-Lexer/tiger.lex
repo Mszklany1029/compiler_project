@@ -10,6 +10,8 @@ fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos, pos) end
 val x = ref 0 : int ref
 val str = ref "" : string ref
 
+fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString(substring(conv, 1, 3)))))
+
 %%
 %structure TigerLexFun
 %s COMMENT STRING;
@@ -72,7 +74,10 @@ val str = ref "" : string ref
 
 <INITIAL> "\"" => (YYBEGIN STRING; str := ""; continue());
 
-<STRING> "\\f__f\\" => (str := !str ^ yytext; continue());
+<STRING> [\\][\n|\r|\t|\ ]*[\\] => (continue());
+
+<STRING> [\\][0-9]{3} => (str := !str ^ asciiz(yytext); continue());
+
 <STRING>  "\\\"" => (str := !str ^ "\""; continue());
 
 <STRING> "\\t" => (str := !str ^ "\t"; continue());
