@@ -7,18 +7,20 @@ Currently passing tests:
  - 4
  - 9
  - 2
-
-Timing Out On:
  - queens
  - test5
  - test8
- - merge
  - test10
- - test6
- - test51
- - test101
+ - merge
+ - test 6
+ - test 51
+
+Incorrect:
+ - test 101
 
 Things in the testcases that cause issues:
- - test 10: error body of while not unit??
- - test 51: multiline comments
- - test101: unmatched comment
+ - test 101: 
+ 	- consists of a nested comment, 3 deep
+	- the outer most is unmatched however, 
+	- Therefore, my ref should read 1 after it happens
+	- perhaps if ref != 0 while in initial state, then throw error

@@ -4,11 +4,15 @@ type lexresult = Tokens.token
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
 fun err(p1,p2) = ErrorMsg.error p1
-
-fun eof() = let val pos = hd(!linePos) in Tokens.EOF(pos, pos) end
-
 val x = ref 0 : int ref
 val str = ref "" : string ref
+val str_switch = ref 0 : int ref
+
+
+fun eof() = let val pos = hd(!linePos) in ( if (!x <> 0) orelse (!str_switch = 1) then ErrorMsg.error (!lineNum) "Error" else (); Tokens.EOF(pos, pos)) end
+
+
+
 
 fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString(substring(conv, 1, 3)))))
 
@@ -23,7 +27,7 @@ fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString
 <INITIAL> "\ " => (continue());
 <INITIAL> "\t" => (continue());
 <INITIAL> "type" => (Tokens.TYPE(yypos,yypos + 4));
-<INITIAL> "var" => (Tokens.VAR(yypos,yypos + 3));
+<)INITIAL> "var" => (Tokens.VAR(yypos,yypos + 3));
 <INITIAL> "function" => (Tokens.FUNCTION(yypos,yypos + 8));
 <INITIAL> "break" => (Tokens.BREAK(yypos,yypos + 5));
 <INITIAL> "of" => (Tokens.OF(yypos,yypos + 2));
@@ -46,7 +50,7 @@ fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString
 <INITIAL> ">" => (Tokens.GT(yypos,yypos + 1));
 <INITIAL> "<=" => (Tokens.LE(yypos,yypos + 2));
 <INITIAL> "<" => (Tokens.LT(yypos,yypos + 1));
-<INITIAL> "!=" => (Tokens.NEQ(yypos,yypos + 2));
+<INITIAL> "<>" => (Tokens.NEQ(yypos,yypos + 2));
 <INITIAL> "=" => (Tokens.EQ(yypos,yypos + 1));
 <INITIAL> "/" => (Tokens.DIVIDE(yypos,yypos + 1));
 <INITIAL> "*" => (Tokens.TIMES(yypos,yypos + 1));
@@ -72,7 +76,7 @@ fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString
 <COMMENT> \n => (continue());
 <COMMENT> "*/" => (x := !x-1; if !x = 0 then YYBEGIN INITIAL else (); continue());
 
-<INITIAL> "\"" => (YYBEGIN STRING; str := ""; continue());
+<INITIAL> "\"" => (YYBEGIN STRING; str_switch := 1; str := ""; continue());
 
 <STRING> [\\][\n|\r|\t|\ ]*[\\] => (continue());
 
@@ -85,11 +89,9 @@ fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString
 
 <STRING> "\\" => (str := !str ^ "\\"; continue());
 
-<STRING> "\"" => (YYBEGIN INITIAL; Tokens.STRING(!str, yypos, yypos + String.size yytext));
+<STRING> "\"" => (YYBEGIN INITIAL; str_switch := 0; Tokens.STRING(!str, yypos, yypos + String.size yytext));
 
 <STRING> . => (str := !str ^ yytext; continue());
-
-
 
 <INITIAL> . => (ErrorMsg.error yypos ("illegal character " ^ yytext); continue());
 
