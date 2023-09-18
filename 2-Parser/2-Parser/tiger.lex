@@ -1,5 +1,7 @@
+type svalue = Tokens.svalue
 type pos = int
-type lexresult = Tokens.token
+type ('a, 'b) token = ('a, 'b) Tokens.token
+type lexresult = (svalue, pos) token
 
 val lineNum = ErrorMsg.lineNum
 val linePos = ErrorMsg.linePos
@@ -18,7 +20,8 @@ fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString
 
 %%
 %structure TigerLexFun
-%s COMMENT STRING;
+%s COMMENT STRING
+%header (functor TigerLexFun(strucutre Tokens: Tiger_TOKENS));
 %%
 <INITIAL> [\r?\n] => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 
@@ -27,7 +30,7 @@ fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString
 <INITIAL> "\ " => (continue());
 <INITIAL> "\t" => (continue());
 <INITIAL> "type" => (Tokens.TYPE(yypos,yypos + 4));
-<)INITIAL> "var" => (Tokens.VAR(yypos,yypos + 3));
+<INITIAL> "var" => (Tokens.VAR(yypos,yypos + 3));
 <INITIAL> "function" => (Tokens.FUNCTION(yypos,yypos + 8));
 <INITIAL> "break" => (Tokens.BREAK(yypos,yypos + 5));
 <INITIAL> "of" => (Tokens.OF(yypos,yypos + 2));
