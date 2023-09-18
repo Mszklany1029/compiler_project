@@ -19,9 +19,9 @@ fun eof() = let val pos = hd(!linePos) in ( if (!x <> 0) orelse (!str_switch = 1
 fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString(substring(conv, 1, 3)))))
 
 %%
+%header (functor TigerLexFun(strucutre Tokens: Tiger_TOKENS))
 %structure TigerLexFun
-%s COMMENT STRING
-%header (functor TigerLexFun(strucutre Tokens: Tiger_TOKENS));
+%s COMMENT STRING;
 %%
 <INITIAL> [\r?\n] => (lineNum := !lineNum+1; linePos := yypos :: !linePos; continue());
 
