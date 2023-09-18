@@ -77,7 +77,7 @@ fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString
 <COMMENT> "*/" => (x := !x-1; if !x = 0 then YYBEGIN INITIAL else (); continue());
 
 <INITIAL> "\"" => (YYBEGIN STRING; str_switch := 1; str := ""; continue());
-
+<STRING> "\\\\" => (str := !str ^ "\\"; continue());
 <STRING> [\\][\n|\r|\t|\ ]*[\\] => (continue());
 
 <STRING> [\\][0-9]{3} => (str := !str ^ asciiz(yytext); continue());
@@ -87,7 +87,7 @@ fun asciiz(conv : string) : string = Char.toString(Char.chr(valOf(Int.fromString
 <STRING> "\\t" => (str := !str ^ "\t"; continue());
 <STRING> "\\n"=> (str := !str ^ "\n"; continue());
 
-<STRING> "\\" => (str := !str ^ "\\"; continue());
+
 
 <STRING> "\"" => (YYBEGIN INITIAL; str_switch := 0; Tokens.STRING(!str, yypos, yypos + String.size yytext));
 

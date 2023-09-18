@@ -24,3 +24,5 @@ Things in the testcases that cause issues:
 	- the outer most is unmatched however, 
 	- Therefore, my ref should read 1 after it happens
 	- perhaps if ref != 0 while in initial state, then throw error
+
+<STRING> "\\" => (str := !str ^ "\\"; continue());
