@@ -1,4 +1,4 @@
-functor TigerLexFun(strucutre Tokens: Tiger_TOKENS)  = struct
+functor TigerLexFun(structure Tokens: Tiger_TOKENS)  = struct
 
     structure yyInput : sig
 

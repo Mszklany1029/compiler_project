@@ -1,3 +1,4 @@
+structure A = Absyn
 %%
 %term
     EOF 
@@ -11,7 +12,12 @@
   | BREAK | NIL
   | FUNCTION | VAR | TYPE 
 
-%nonterm  exp | program
+(*%nonterm  exp of A.exp | program of A.exp | dec of A.dec | tydec of A.dec | fundec of A.dec | vardec of A.dec | declist of A.dec list | ty of A.ty | tyfield of A.field | tyfields of A.field list*)
+
+%nonterm 
+ exp | program
+ | dec | tydec | fundec | vardec | declist
+ | ty | tyfield | tyfields
 
 %pos int
 %verbose
@@ -30,9 +36,56 @@
 %value INT (1)
 %value STRING ("")
 
+%nonassoc EQ NEQ
+%left PLUS MINUS
+%left TIMES DIVIDE
+
+
 %%
 
-program	: exp				()
+program	: exp				(exp)
 
 	
-exp: 			()
+exp : ID 			()
+    | INT	()
+    | STRING	()
+    | NIL	()
+    | exp	()
+    (*| exp PLUS exp	()
+    | exp MINUS exp	()
+    | exp TIMES exp	()
+    | exp DIVIDE exp	()*)
+    | exp LT exp	()
+    | exp LE exp	()
+    | exp GT exp	()
+    | exp GE exp	()
+    | exp EQ exp	()
+    | exp NEQ exp	()
+    | IF exp THEN exp	()
+
+declist : dec	()
+	| declist dec	()
+	| 	()
+
+dec : tydec	()
+    | vardec	()
+    | fundec	()
+
+tydec : TYPE ID EQ ty	()
+
+ty : ID	()
+   | LBRACE tyfields RBRACE	()
+   | ARRAY OF ID	()
+
+tyfields : 	() (*COME BACK AND CHECK??*)
+         | ID COLON ID	()
+	 | ID COLON ID tyfield	()
+
+tyfield : COMMA ID COLON ID	()
+	| 	() (*USE OF EMPTY???*)
+
+vardec : VAR ID ASSIGN exp	()
+       | VAR ID COLON ID ASSIGN exp	() (*COME BACK TO VARDEC FOR NIL CASE?*)
+
+fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp	()
+       | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp	()
