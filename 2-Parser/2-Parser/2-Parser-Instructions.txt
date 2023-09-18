@@ -1,0 +1,154 @@
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+Project 2: Parsing
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+In Part 1, you will write a parser that recognizes if a program is in the Tiger
+language.  In Part 2, you will augment the parser to return an abstract syntax
+tree for the program.
+
+You will need to refer to the Tiger language specification, posted on BrightSpace.
+
+------------------------------------------------------------------------------
+Part 1
+------------------------------------------------------------------------------
+
+1) Download the 2-Parsing starting folder.  The following files are relevant
+to Part 1:
+
+    - sources.cm - the "makefile"
+    - errormsg.sml - The ErrorMsg structure, useful for producing error messages
+                     with file names and line numbers.
+    - parsetest.sml - A driver to run your parser on an input file.
+    - tiger.grm - The skeleton file you must fill in.
+
+2) Copy your completed tiger.lex file from 1-Lexer to 2-Parser.  You do not need
+to copy any of the other files.
+
+3) Modify your copied tiger.lex file as follows:
+
+    - In the first section REMOVE the lines:
+        
+        type pos = int
+        type lexresult = Tokens.token
+        
+    and REPLACE them with:
+        
+        type svalue = Tokens.svalue
+        type pos = int
+        type ('a,'b) token = ('a,'b) Tokens.token
+        type lexresult = (svalue,pos) token
+
+    - ADD the line
+        %header (functor TigerLexFun(structure Tokens: Tiger_TOKENS));
+    in the second section (after the first %% line.)
+
+4) A skeleton grammar is provided in tiger.sml.  Extend the production rules
+to support parsing the entire Tiger language.  Pay particular attention to the
+specified associativity and precedence rules.
+
+Your grammar should have no reduce/reduce conflicts, and you should aim to
+minimize shift/reduce conflicts.  Document any shift/reduce confmlicts in
+comment(s), and explain why they are not harmful.
+
+You may use precedence directives (%left, %nonassoc, %right) when doing so is straightfoward.
+
+------------------------------------------------------------------------------
+
+After completing the above steps, you can use testPart1.py to check your parser.
+
+------------------------------------------------------------------------------
+Part 2
+------------------------------------------------------------------------------
+
+5) Examine the following files in the 2-Parsing folder:
+
+    - absyn.sml - The abstract syntax data structure for Tiger.
+    - printabsyn.sml - A pretty-printer for the abstract syntax trees.
+    - symbol.sml - A module to turn strings into symbols.
+
+
+6) Adjust tiger.grm, to add semantic actions that produce an abstract syntax
+tree while parsing.
+
+I would recommend adding:
+
+    structure A = Absyn
+
+to the top of your Tiger.grm- this will allow you to refer to (for example):
+    A.NilExp
+rather than the more verbose:
+    Absyn.NilExp
+
+7) Some guidelines for the translation:
+
+Try to set position fields in a way that is logical, but there are no hard requirements.
+
+The tiger language treats adjacent function declarations and type declarations are mutually recursive.
+All adjacent function declarations should be grouped in a list in a single FunctionDec.
+All adjacent type declarations should be grouped in a list in a single TypeDec.
+
+There is no abstract syntax for & and |.  Instead, translate
+    e1 & e2 = if e1 then e2 else 0
+    e1 | e2 = if e1 then 1 else e2
+
+Represent unary negation (-i) as (0 - i).
+
+Represent an empty statement as (SeqExp []).
+
+The lexer returns `string`s, but the abstract syntax requires `symbol`s.
+You will find the following two functions useful:
+    Symbol.symbol : string -> symbol
+    Symbol.name : symbol -> string
+
+The "escape" fields in ForExp, VarExp, and field are a hack we will need in
+future stages of the compiler.  For now, set these escape fields to "ref true".
+
+8) In parsetest.sml, the lines:
+    val (absyn, _) = TigerP.parse(30,lexer,parseerror,())
+      in TextIO.closeIn file;
+call your parser, and then close the file of the parsed program.
+
+To print the result of parsing, add the line:
+    PrintAbsyn.print(TextIO.stdOut, absyn);
+directly after these two lines.
+
+------------------------------------------------------------------------------
+
+After completing the above steps, you can use testPart2.py to check your parser.
+You should ensure that running testPart2.py reports that you successfully pass all the tests,
+as this is how we will be grading the assignment.
+
+9) To submit, zip ALL files required to build your project, and upload to BrightSpace.
+
+We should be able to unzip your submitted folder, navigate to it on the command line, and run:
+
+% sml            
+Standard ML of New Jersey (64-bit) v110.99.3 [built: Thu Jul 28 00:35:16 2022]
+- CM.make "sources.cm";
+...
+val it = true : bool
+- Parse.parse("testcases/parse/test1.tig");
+LetExp([
+ TypeDec[
+  (arrtype,
+  ...
+
+If you omit files needed to build your project from your submissions, you will be asked to resubmit, and your
+project will be counted as a late submission.
+
+------------------------------------------------------------------------------
+
+Test Case Submission
+Alongside the project, you must submit at least 5 new test cases. At least 3 of these test cases must be parsable,
+at least 1 must not be parsable.  All must pass the lexer.  Please submit the test cases in a folder separate from
+the existing testcases, (so that finding your test cases is easy) and make it clear which test cases you
+expect to be parsable, and which you do not.
+
+Please try to make the test cases interesting- in that they either implement some kind of (semi-)realistic algorithm,
+or they somehow assisted you in debugging your parser.  You can use comments to help argue interesting-ness.
+
+Some subset of the submitted test cases will be incorporated into the grading of Project 2, and possibly future projects.
+Submitted test cases MAY be distributed to other students in this class, or to classes future semesters
+(so don't include anything you are not comfortable being distributed.)
