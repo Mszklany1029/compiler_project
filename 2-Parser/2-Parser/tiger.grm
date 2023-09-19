@@ -18,6 +18,7 @@ structure A = Absyn
  exp | program
  | dec | tydec | fundec | vardec | declist
  | ty | tyfield | tyfields
+ | lvalue
 
 %pos int
 %verbose
@@ -36,7 +37,7 @@ structure A = Absyn
 %value INT (1)
 %value STRING ("")
 
-%nonassoc EQ NEQ
+%nonassoc EQ NEQ GT GE LT LE
 %left PLUS MINUS
 %left TIMES DIVIDE
 
@@ -48,13 +49,14 @@ program	: exp				(exp)
 	
 exp : ID 			()
     | INT	()
-    | STRING	()
+    | STRING	() (*POSSIBLE ISSUE WITH ALLOWING STRINGS TO GO TO ARITHMETIC RULES??*)
     | NIL	()
+    | BREAK	()
     | exp	()
-    (*| exp PLUS exp	()
+    | exp PLUS exp	()
     | exp MINUS exp	()
     | exp TIMES exp	()
-    | exp DIVIDE exp	()*)
+    | exp DIVIDE exp	()
     | exp LT exp	()
     | exp LE exp	()
     | exp GT exp	()
@@ -62,10 +64,16 @@ exp : ID 			()
     | exp EQ exp	()
     | exp NEQ exp	()
     | IF exp THEN exp	()
+    | IF exp THEN exp ELSE exp ()
+    | WHILE exp DO exp	()
+    | LET declist IN exp END	() (*COME BACK FOR PARAMETERS*)
+    | FOR ID ASSIGN exp TO exp DO exp	()
+    | ID LBRACE ID EQ exp LBRACE ID EQ exp RBRACE RBRACE	() (*COME BACK FIX RECORD TYPE CREATION*)
+    | ID LBRACK exp RBRACK OF exp	()
+
 
 declist : dec	()
 	| declist dec	()
-	| 	()
 
 dec : tydec	()
     | vardec	()
@@ -73,16 +81,15 @@ dec : tydec	()
 
 tydec : TYPE ID EQ ty	()
 
-ty : ID	()
+ty : ID	() (*COME BACK FOR MUTUALLY RECURSIVE TYPES*)
    | LBRACE tyfields RBRACE	()
    | ARRAY OF ID	()
 
 tyfields : 	() (*COME BACK AND CHECK??*)
-         | ID COLON ID	()
-	 | ID COLON ID tyfield	()
+         | ID COLON ID LBRACE tyfield RBRACE	()
 
-tyfield : COMMA ID COLON ID	()
-	| 	() (*USE OF EMPTY???*)
+tyfield : ID COLON ID	()
+	| ID COLON ID COMMA tyfield	()
 
 vardec : VAR ID ASSIGN exp	()
        | VAR ID COLON ID ASSIGN exp	() (*COME BACK TO VARDEC FOR NIL CASE?*)
