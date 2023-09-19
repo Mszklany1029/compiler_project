@@ -15,10 +15,11 @@ structure A = Absyn
 (*%nonterm  exp of A.exp | program of A.exp | dec of A.dec | tydec of A.dec | fundec of A.dec | vardec of A.dec | declist of A.dec list | ty of A.ty | tyfield of A.field | tyfields of A.field list*)
 
 %nonterm 
- exp | program
+ program | exp | expseq
  | dec | tydec | fundec | vardec | declist
- | ty | tyfield | tyfields
- | lvalue
+ | ty | tyfields
+ | lvalue | funparams 
+ | record | reclist
 
 %pos int
 %verbose
@@ -52,7 +53,6 @@ exp : ID 			()
     | STRING	() (*POSSIBLE ISSUE WITH ALLOWING STRINGS TO GO TO ARITHMETIC RULES??*)
     | NIL	()
     | BREAK	()
-    | exp	()
     | exp PLUS exp	()
     | exp MINUS exp	()
     | exp TIMES exp	()
@@ -66,10 +66,21 @@ exp : ID 			()
     | IF exp THEN exp	()
     | IF exp THEN exp ELSE exp ()
     | WHILE exp DO exp	()
-    | LET declist IN exp END	() (*COME BACK FOR PARAMETERS*)
+    | LET declist IN expseq END	() (*COME BACK FOR PARAMETERS*)
     | FOR ID ASSIGN exp TO exp DO exp	()
-    | ID LBRACE ID EQ exp LBRACE ID EQ exp RBRACE RBRACE	() (*COME BACK FIX RECORD TYPE CREATION*)
+    (*| ID LBRACE ID EQ exp LBRACE ID EQ exp RBRACE RBRACE	() (*COME BACK FIX RECORD TYPE CREATION ALSO GO INTO .LEX AND MAKE SURE THAT ONE SLASH RULE IS THERE*)*)
     | ID LBRACK exp RBRACK OF exp	()
+    | ID LPAREN RPAREN	()
+    | ID LPAREN funparams RPAREN	()
+    | record	()
+    | lvalue	()
+
+expseq : exp	()
+       | exp SEMICOLON expseq	()
+
+lvalue : ID	()
+       | lvalue DOT ID	()
+       | lvalue LBRACK exp RBRACK	()
 
 
 declist : dec	()
@@ -86,13 +97,20 @@ ty : ID	() (*COME BACK FOR MUTUALLY RECURSIVE TYPES*)
    | ARRAY OF ID	()
 
 tyfields : 	() (*COME BACK AND CHECK??*)
-         | ID COLON ID LBRACE tyfield RBRACE	()
-
-tyfield : ID COLON ID	()
-	| ID COLON ID COMMA tyfield	()
+         | ID COLON ID	()
+	 | ID COLON ID COMMA tyfields	()
 
 vardec : VAR ID ASSIGN exp	()
        | VAR ID COLON ID ASSIGN exp	() (*COME BACK TO VARDEC FOR NIL CASE?*)
 
 fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp	()
        | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp	()
+
+funparams : exp	()
+	  | exp COMMA funparams	()
+
+record : ID LBRACE RBRACE	()
+       | ID LBRACE reclist RBRACE	()
+
+reclist : ID EQ exp	()
+        | ID EQ exp COMMA reclist	()
