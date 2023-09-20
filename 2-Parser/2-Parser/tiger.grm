@@ -6,7 +6,7 @@ structure A = Absyn
   | INT of int | STRING of string 
   | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK 
   | LBRACE | RBRACE | DOT 
-  | PLUS | MINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
+  | PLUS | MINUS | UMINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
   | AND | OR | ASSIGN
   | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF 
   | BREAK | NIL
@@ -38,10 +38,11 @@ structure A = Absyn
 %value INT (1)
 %value STRING ("")
 
+%left AND OR
 %nonassoc EQ NEQ GT GE LT LE
 %left PLUS MINUS
 %left TIMES DIVIDE
-
+%right UMINUS
 
 %%
 
@@ -54,6 +55,7 @@ exp : ID 			()
     | NIL	()
     | BREAK	()
     | exp PLUS exp	()
+    | MINUS exp		%prec UMINUS()
     | exp MINUS exp	()
     | exp TIMES exp	()
     | exp DIVIDE exp	()
@@ -63,8 +65,12 @@ exp : ID 			()
     | exp GE exp	()
     | exp EQ exp	()
     | exp NEQ exp	()
+    | exp AND exp	()
+    | exp OR exp	()
     | IF exp THEN exp	()
+    (*| IF LPAREN exp RPAREN THEN exp	()*)
     | IF exp THEN exp ELSE exp ()
+    (*| IF LPAREN exp RPAREN THEN exp ELSE exp 	()*)
     | WHILE exp DO exp	()
     | LET declist IN expseq END	() (*COME BACK FOR PARAMETERS*)
     | FOR ID ASSIGN exp TO exp DO exp	()
@@ -74,6 +80,10 @@ exp : ID 			()
     | ID LPAREN funparams RPAREN	()
     | record	()
     | lvalue	()
+    | lvalue ASSIGN exp	()
+    | LPAREN expseq RPAREN	()
+    | ID ASSIGN exp	()
+    | LPAREN RPAREN	()
 
 expseq : exp	()
        | exp SEMICOLON expseq	()
@@ -81,6 +91,7 @@ expseq : exp	()
 lvalue : ID	()
        | lvalue DOT ID	()
        | lvalue LBRACK exp RBRACK	()
+       | ID LBRACK exp RBRACK	()
 
 
 declist : dec	()
@@ -102,6 +113,7 @@ tyfields : 	() (*COME BACK AND CHECK??*)
 
 vardec : VAR ID ASSIGN exp	()
        | VAR ID COLON ID ASSIGN exp	() (*COME BACK TO VARDEC FOR NIL CASE?*)
+       (*| VAR ID COLON ID ASSIGN NIL	()*)
 
 fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp	()
        | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp	()
