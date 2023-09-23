@@ -38,7 +38,8 @@ structure A = Absyn
 %value INT (1)
 %value STRING ("")
 
-%left AND OR
+%left OR
+%left AND 
 %nonassoc EQ NEQ GT GE LT LE
 %left PLUS MINUS
 %left TIMES DIVIDE
@@ -49,8 +50,8 @@ structure A = Absyn
 program	: exp				(exp)
 
 	
-exp : ID 			()
-    | INT	()
+exp : (*ID 			()
+    |*) INT	()
     | STRING	() (*POSSIBLE ISSUE WITH ALLOWING STRINGS TO GO TO ARITHMETIC RULES??*)
     | NIL	()
     | BREAK	()
@@ -68,13 +69,11 @@ exp : ID 			()
     | exp AND exp	()
     | exp OR exp	()
     | IF exp THEN exp	()
-    (*| IF LPAREN exp RPAREN THEN exp	()*)
     | IF exp THEN exp ELSE exp ()
-    (*| IF LPAREN exp RPAREN THEN exp ELSE exp 	()*)
     | WHILE exp DO exp	()
-    | LET declist IN expseq END	() (*COME BACK FOR PARAMETERS*)
+    | LET declist IN expseq END	() (*COME BACK FOR PARAMETERS*) 
     | FOR ID ASSIGN exp TO exp DO exp	()
-    (*| ID LBRACE ID EQ exp LBRACE ID EQ exp RBRACE RBRACE	() (*COME BACK FIX RECORD TYPE CREATION ALSO GO INTO .LEX AND MAKE SURE THAT ONE SLASH RULE IS THERE*)*)
+    | ID LBRACE ID EQ exp LBRACE ID EQ exp RBRACE RBRACE	() (*COME BACK FIX RECORD TYPE CREATION ALSO GO INTO .LEX AND MAKE SURE THAT ONE SLASH RULE IS THERE*)
     | ID LBRACK exp RBRACK OF exp	()
     | ID LPAREN RPAREN	()
     | ID LPAREN funparams RPAREN	()
@@ -95,7 +94,7 @@ lvalue : ID	()
 
 
 declist : dec	()
-	| declist dec	()
+	| dec declist	()
 
 dec : tydec	()
     | vardec	()
