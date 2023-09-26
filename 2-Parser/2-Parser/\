@@ -1,0 +1,129 @@
+structure A = Absyn
+%%
+%term
+    EOF 
+  | ID of string
+  | INT of int | STRING of string 
+  | COMMA | COLON | SEMICOLON | LPAREN | RPAREN | LBRACK | RBRACK 
+  | LBRACE | RBRACE | DOT 
+  | PLUS | MINUS | UMINUS | TIMES | DIVIDE | EQ | NEQ | LT | LE | GT | GE
+  | AND | OR | ASSIGN
+  | ARRAY | IF | THEN | ELSE | WHILE | FOR | TO | DO | LET | IN | END | OF 
+  | BREAK | NIL
+  | FUNCTION | VAR | TYPE 
+
+(*%nonterm  exp of A.exp | program of A.exp | dec of A.dec | tydec of A.dec | fundec of A.dec | vardec of A.dec | declist of A.dec list | ty of A.ty | tyfield of A.field | tyfields of A.field list*)
+
+%nonterm 
+ program of A.exp | exp of A.exp | expseq of A.exp list
+ | dec | tydec | fundec | vardec | declist
+ | ty | tyfields
+ | lvalue | funparams 
+ | record | reclist
+
+%pos int
+%verbose
+%start program
+%eop EOF
+%noshift EOF
+
+%name Tiger
+
+%keyword WHILE FOR TO BREAK LET IN END FUNCTION VAR TYPE ARRAY IF THEN ELSE 
+	DO OF NIL
+
+%prefer THEN ELSE LPAREN
+
+%value ID ("bogus")
+%value INT (1)
+%value STRING ("")
+
+%left ASSIGN
+
+%left OR
+%left AND 
+%nonassoc EQ NEQ GT GE LT LE
+%left PLUS MINUS
+%left TIMES DIVIDE
+%right UMINUS
+
+%%
+
+program	: exp				(exp)
+
+	
+exp : (*ID 			()
+    |*) INT	(A.IntExp INT)
+    | STRING	(A.StringExp(Symbol.name STRING, STRINGright)) (*POSSIBLE ISSUE WITH ALLOWING STRINGS TO GO TO ARITHMETIC RULES??*)
+    | NIL	(A.NilExp)
+    | BREAK	(A.BreakExp(BREAKright))
+    | exp PLUS exp	(A.OpExp{left = exp1, right = exp2, oper = A.PlusOp, pos = })
+    | MINUS exp		%prec UMINUS()
+    | exp MINUS exp	()
+    | exp TIMES exp	()
+    | exp DIVIDE exp	()
+    | exp LT exp	() (*SOLVE THIS WITH PRECEDENCE RULES? OR WOULD IT BE BETTER TO CREATE A NEW NONTERMINAL TO HANDLE ALL INSTANCES??*)
+    | exp LE exp	()
+    | exp GT exp	()
+    | exp GE exp	()
+    | exp EQ exp	()
+    | exp NEQ exp	()
+    | exp AND exp	()
+    | exp OR exp	()
+    | IF exp THEN exp	()
+    | IF exp THEN exp ELSE exp ()
+    | WHILE exp DO exp	()
+    | LET declist IN expseq END	() (*COME BACK FOR PARAMETERS*) 
+    | FOR ID ASSIGN exp TO exp DO exp	()
+    | ID LBRACE ID EQ exp LBRACE ID EQ exp RBRACE RBRACE	() (*COME BACK FIX RECORD TYPE CREATION ALSO GO INTO .LEX AND MAKE SURE THAT ONE SLASH RULE IS THERE*)
+    | ID LBRACK exp RBRACK OF exp	()
+    | ID LPAREN RPAREN	()
+    | ID LPAREN funparams RPAREN	()
+    | record	()
+    | lvalue	()
+    | lvalue ASSIGN exp	()
+    | LPAREN expseq RPAREN	()
+    (*| ID ASSIGN exp	()*)
+    | LPAREN RPAREN	()
+
+expseq : exp	()
+       | exp SEMICOLON expseq	()
+
+lvalue : ID	()
+       | lvalue DOT ID	()
+       | lvalue LBRACK exp RBRACK	()
+       | ID LBRACK exp RBRACK	()
+
+
+declist : dec	()
+	| dec declist	()
+
+dec : tydec	()
+    | vardec	()
+    | fundec	()
+
+tydec : TYPE ID EQ ty	()
+
+ty : ID	() (*COME BACK FOR MUTUALLY RECURSIVE TYPES*)
+   | LBRACE tyfields RBRACE	()
+   | ARRAY OF ID	()
+
+tyfields : 	() (*COME BACK AND CHECK??*)
+         | ID COLON ID	()
+	 | ID COLON ID COMMA tyfields	()
+
+vardec : VAR ID ASSIGN exp	()
+       | VAR ID COLON ID ASSIGN exp	() (*COME BACK TO VARDEC FOR NIL CASE?*)
+       (*| VAR ID COLON ID ASSIGN NIL	()*)
+
+fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp	()
+       | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp	()
+
+funparams : exp	()
+	  | exp COMMA funparams	()
+
+record : ID LBRACE RBRACE	()
+       | ID LBRACE reclist RBRACE	()
+
+reclist : ID EQ exp	()
+        | ID EQ exp COMMA reclist	()
