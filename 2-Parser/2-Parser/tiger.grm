@@ -15,11 +15,12 @@ structure A = Absyn
 (*%nonterm  exp of A.exp | program of A.exp | dec of A.dec | tydec of A.dec | fundec of A.dec | vardec of A.dec | declist of A.dec list | ty of A.ty | tyfield of A.field | tyfields of A.field list*)
 
 %nonterm 
- program of A.exp | exp of A.exp | expseq of A.exp list
+ program of A.exp | exp of A.exp | expseq of (A.exp * pos) list | expend of (A.exp * pos) list
  | dec of A.dec | tydec of A.dec| fundec of A.dec | vardec of A.dec | declist of A.dec list
  | ty of A.ty| tyfields of A.field list
  | lvalue of A.var | funparams of A.exp list
- | record of A.ty | reclist of A.ty list
+ | record of A.exp | reclist of (A.symbol * A.exp * pos) list
+ (*| record of A.ty | reclist of A.ty list*)
 
 %pos int
 %verbose
@@ -52,9 +53,8 @@ structure A = Absyn
 program	: exp				(exp)
 
 	
-exp : (*ID 			()
-    |*) INT	(A.IntExp INT)
-    | STRING	(A.StringExp(Symbol.name STRING, STRINGright)) (*POSSIBLE ISSUE WITH ALLOWING STRINGS TO GO TO ARITHMETIC RULES??*)
+exp : INT	(A.IntExp INT)
+    | STRING	(A.StringExp(STRING, STRINGright)) (*POSSIBLE ISSUE WITH ALLOWING STRINGS TO GO TO ARITHMETIC RULES??*)
     | NIL	(A.NilExp)
     | BREAK	(A.BreakExp(BREAKright))
     | exp PLUS exp	(A.OpExp{left = exp1, right = exp2, oper = A.PlusOp, pos = PLUSleft })
@@ -68,62 +68,65 @@ exp : (*ID 			()
     | exp GE exp	(A.OpExp{left = exp1, oper = A.GtOp, right = exp2, pos = GEleft})
     | exp EQ exp	(A.OpExp{left = exp1, oper = A.EqOp, right = exp2, pos = EQleft})
     | exp NEQ exp	(A.OpExp{left = exp1, oper = A.NeqOp, right = exp2, pos = NEQleft})
-    | exp AND exp	(A.IfExp{test = exp1, then' = exp2, else' = A.IntExp 0, pos = ANDleft}) (*THESE NEED TO BE IF EXPRESSIONS*)
-    | exp OR exp	(A.IfExp{test = exp1, then' = A.IntExp 1, else' = exp2, pos = ORleft})
-    | IF exp THEN exp	(A.IfExp{test = exp1, then' = exp2, else' = none, pos =IFright})
-    | IF exp THEN exp ELSE exp (A.IfExp{test = exp1, then' = exp2, else' = exp3, pos = IFright})
+    | exp AND exp	(A.IfExp{test = exp1, then' = exp2, else' = SOME (A.IntExp 0), pos = ANDleft}) (*THESE NEED TO BE IF EXPRESSIONS*)
+    | exp OR exp	(A.IfExp{test = exp1, then' = A.IntExp 1, else' = SOME (exp2), pos = ORleft})
+    | IF exp THEN exp	(A.IfExp{test = exp1, then' = exp2, else' = NONE, pos =IFright})
+    | IF exp THEN exp ELSE exp (A.IfExp{test = exp1, then' = exp2, else' = SOME (exp3), pos = IFright})
     | WHILE exp DO exp	(A.WhileExp{test = exp1, body = exp2, pos = WHILEright})
-    | LET declist IN expseq END	(A.LetExp{decs = declist, body = A.SeqExp(expseq, INright), pos = LETright }) (*COME BACK FOR PARAMETERS*) 
+    | LET declist IN expseq END	(A.LetExp{decs = declist, body = A.SeqExp(expseq), pos = LETright }) (*COME BACK FOR PARAMETERS*) 
     | FOR ID ASSIGN exp TO exp DO exp	(A.ForExp{var = Symbol.symbol ID, escape = ref true, lo = exp1, hi = exp2, body = exp3, pos = ASSIGNright})
-    | ID LBRACE ID EQ exp LBRACE ID EQ exp RBRACE RBRACE	() (*THIS MIGHT BE AN ISSUE*) (*COME BACK FIX RECORD TYPE CREATION ALSO GO INTO .LEX AND MAKE SURE THAT ONE SLASH RULE IS THERE*)
+    (*| ID LBRACE ID EQ exp LBRACE ID EQ exp RBRACE RBRACE	()*) (*THIS MIGHT BE AN ISSUE*) (*COME BACK FIX RECORD TYPE CREATION ALSO GO INTO .LEX AND MAKE SURE THAT ONE SLASH RULE IS THERE*)
     | ID LBRACK exp RBRACK OF exp	(A.ArrayExp{typ = Symbol.symbol ID, size = exp1, init = exp2, pos = LBRACKright})
-    | ID LPAREN RPAREN	(A.CallExp = {func = Symbol.symbol ID, args = [], pos = IDright})
-    | ID LPAREN funparams RPAREN	(A.CallExp = {func = Symbol.symbol ID, args = A.SeqExp(funparams, LPARENright), pos = IDright})
+    | ID LPAREN RPAREN	(A.CallExp{func = Symbol.symbol ID, args = [], pos = IDleft})
+    | ID LPAREN funparams RPAREN	(A.CallExp{func = Symbol.symbol ID, args = funparams, pos = IDleft})
     | record	(record)
-    | lvalue	(lvalue)
+    | lvalue	(A.VarExp lvalue)
     | lvalue ASSIGN exp	(A.AssignExp{var = lvalue, exp = exp1, pos = ASSIGNleft})
-    | LPAREN expseq RPAREN	(A.SeqExp(expseq, LPARENright))
+    | LPAREN expseq RPAREN	(A.SeqExp(expseq))
     (*| ID ASSIGN exp	()*)
     | LPAREN RPAREN	(A.SeqExp([]))
 
-expseq : exp	([exp])
-       | exp SEMICOLON expseq	(exp :: explist)
+expseq : exp	([(exp, expleft)])
+       | exp SEMICOLON expend	((exp, expleft) :: expend)
 
-lvalue : ID	(A.SimpleVar Symbol.symbol ID, IDright)
-       | lvalue DOT ID	(A.FieldVar lvalue, Symbol.symbol ID, DOTleft) (*WHAT IS MEANT BY USE OF VAR??*)
-       | lvalue LBRACK exp RBRACK	(A.SubscriptVar lvalue, exp1, LBRACKleft)
-       | ID LBRACK exp RBRACK	(A.SubscriptVar A.SimpleVar(Symbol.symbol ID, IDright), exp1, LBRACKright)
+expend : exp SEMICOLON expend ((exp, expleft) :: expend)
+       | 	([])
+
+lvalue : ID	(A.SimpleVar (Symbol.symbol ID, IDright))
+       | lvalue DOT ID	(A.FieldVar (lvalue, Symbol.symbol ID, DOTleft)) (*WHAT IS MEANT BY USE OF VAR??*)
+       | lvalue LBRACK exp RBRACK	(A.SubscriptVar (lvalue, exp1, LBRACKleft))
+       | ID LBRACK exp RBRACK	(A.SubscriptVar (A.SimpleVar(Symbol.symbol ID, IDright), exp1, LBRACKright))
 
 
 declist : dec	([dec])
 	| dec declist	(dec :: declist)
 
-dec : tydec	(tydec)
+dec : tydec	(tydec) (*NOTE: COME BACK AND FIX TYDECS AND FUNDECS ISSUE*)
     | vardec	(vardec)
     | fundec	(fundec)
 
-tydec : TYPE ID EQ ty	(A.TypeDec{name = Symbol.symbol ID, ty = ty1, pos = TYPEright} :: []) (*COME BACK, IS NAME TYPE, ID, OR BOTH? MUTUALLY RECURSIVE TYPES NOT RIGHT?*)
+tydec : TYPE ID EQ ty	(A.TypeDec [{name = Symbol.symbol ID, ty = ty1, pos = TYPEright}]) (*COME BACK, IS NAME TYPE, ID, OR BOTH? MUTUALLY RECURSIVE TYPES NOT RIGHT? WILL NEED TO REWRITE*)
 
-ty : ID	(Symbol.symbol ID) (*COME BACK FOR MUTUALLY RECURSIVE TYPES*) (*NAME TY??*)
+ty : ID	(A.NameTy (Symbol.symbol ID, IDleft)) (*COME BACK FOR MUTUALLY RECURSIVE TYPES*) (*NAME TY??*)
    | LBRACE tyfields RBRACE	(A.RecordTy tyfields)
-   | ARRAY OF ID	(A.ArrayTy Symbol.symbol ID, ARRAYright)
+   | ARRAY OF ID	(A.ArrayTy (Symbol.symbol ID, ARRAYright))
 
 tyfields : 	([]) (*COME BACK AND CHECK??*)
-         | ID COLON ID	(A.field{name = Symbol.symbol ID, escape = ref true, typ = Symbol.symbol ID, pos = COLONleft} :: [])
-	 | ID COLON ID COMMA tyfields	(A.field{name = Symbol.symbol ID, escape = ref true, typ = Symbol.symbol ID, pos = COLONleft} :: tyfields)
+         | ID COLON ID	({name = Symbol.symbol ID, escape = ref true, typ = Symbol.symbol ID, pos = COLONleft} :: [])
+	 | ID COLON ID COMMA tyfields	({name = Symbol.symbol ID, escape = ref true, typ = Symbol.symbol ID, pos = COLONleft} :: tyfields)
 
-vardec : VAR ID ASSIGN exp	(A.VarDec{name = Symbol.symbol ID, escape = ref true, init = exp1, pos = ASSIGNright})
-       | VAR ID COLON ID ASSIGN exp	(A.VarDec = {name = Symbol.symbol ID, escape = ref true, typ = (Symbol.symbol ID, COLONright), init = exp1, pos = ASSIGNright} ) (*COME BACK TO VARDEC FOR NIL CASE?*)
+vardec : VAR ID ASSIGN exp	(A.VarDec{name = Symbol.symbol ID, escape = ref true, typ = NONE, init = exp1, pos = ASSIGNright})
+       | VAR ID COLON ID ASSIGN exp	(A.VarDec{name = Symbol.symbol ID, escape = ref true, typ = SOME (Symbol.symbol ID, COLONright), init = exp1, pos = ASSIGNright} ) (*COME BACK TO VARDEC FOR NIL CASE?*)
        (*| VAR ID COLON ID ASSIGN NIL	()*)
 
-fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp	(A.FunctionDec A.fundec = {name = Symbol.symbol ID, params = tyfields1, body = exp1, pos = LPARENright} :: [])
-       | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp	(A.FunctionDec A.fundec = {name = Symbol.symbol ID, params = tyfields1, result = (Symbol.symbol ID, COLONright), body = exp1, pos = LPARENright} :: []) (*LIST STUFF WILL PROBS NEED TO BE FIXED*)
+fundec : FUNCTION ID LPAREN tyfields RPAREN EQ exp	(A.FunctionDec ([{name = Symbol.symbol ID, params = tyfields1, result = NONE, body = exp1, pos = LPARENright}]))
+       | FUNCTION ID LPAREN tyfields RPAREN COLON ID EQ exp	(A.FunctionDec ([{name = Symbol.symbol ID, params = tyfields1, result = SOME (Symbol.symbol ID, COLONright), body = exp1, pos = LPARENright}])) (*LIST STUFF WILL PROBS NEED TO BE FIXED*)
 
 funparams : exp	([exp])
 	  | exp COMMA funparams	(exp :: funparams)
 
-record : ID LBRACE RBRACE	(A.RecordTy []) (*PROBABLY WRONG*)
-       | ID LBRACE reclist RBRACE	(A.RecordTy reclist)
+record : ID LBRACE RBRACE	(A.RecordExp{fields = [], typ = Symbol.symbol ID, pos = IDright}) (*PROBABLY WRONG*)
+       | ID LBRACE reclist RBRACE	(A.RecordExp{fields = reclist, typ = Symbol.symbol ID, pos = LBRACEright})
 
-reclist : ID EQ exp	(A.field{name = Symbol.symbol ID, escape = ref true, }) (WHERE DOES EXP GO?)
-        | ID EQ exp COMMA reclist	()
+reclist : ID EQ exp ([(Symbol.symbol ID, exp1, IDleft)]) (*WHERE DOES EXP GO?*)
+        | ID EQ exp COMMA reclist ((Symbol.symbol ID, exp1, IDleft) :: reclist)
