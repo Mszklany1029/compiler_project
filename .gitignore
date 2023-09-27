@@ -1,2 +1,3 @@
 **/__MACOSX
 *.tar.gz
+.DS_Store
