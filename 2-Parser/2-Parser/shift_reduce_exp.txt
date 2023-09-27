@@ -1,0 +1,5 @@
+The shift-reduce conflicts on states 11 and 14 are fine because in the event of a shift-reduce conflict it is always preferable to shift and consume a token instead of reducing.
+
+For the conflict at state 11 we already have an LPAREN on the stack. By shifting, we are able to consume our next token which should be RPAREN. 
+
+For the conflict at state 14, we have ID on the stack and can either shift to consume the next token or reduce to an lvalue. We want to shift though so that we can consume the LBRACK, LPAREN, or LBRACE token, which we will be unable to do if we reduce. Therefore shifting is fine. 

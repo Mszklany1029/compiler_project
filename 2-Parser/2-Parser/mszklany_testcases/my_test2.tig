@@ -1,0 +1,13 @@
+let
+
+type nameAge = {firstname : string, lastname : string, age : int}
+var person := nameAge {firstname = "Joe", lastname = "mama", age = 25}
+type list_node = {key : nameAge, next : linkedlist}
+type linkedlist = {head : list_node, tl : linkedlist}
+
+in
+
+person.firstname := "Joesephus";
+person.age := person.age + 10
+
+end

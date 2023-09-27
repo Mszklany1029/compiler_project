@@ -1,0 +1,15 @@
+let 
+	type nameAge = {firstname : string, lastname : string, age : int}
+	
+	function do_nothing() =
+		let 
+			type moreperson = {firstType : nameAge, height : int}
+	
+		in
+		
+		end
+
+in
+	
+
+end

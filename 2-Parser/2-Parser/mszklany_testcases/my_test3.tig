@@ -1,0 +1,17 @@
+let
+	var x := "Hello World!"
+	var y := 0
+
+	function letter_sum(input_string : string) : int =
+		let 
+			var temp := size(input_string)
+			var total := 0
+		in for i := 0 to temp 
+			do total:= ord(substring(input_string, i, i+1)) 
+		end
+
+in
+x := "joe mama";
+letter_sum(x)
+
+end

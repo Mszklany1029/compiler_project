@@ -1,0 +1,7 @@
+let
+	type intArray = array of int
+	type please_break = {number : int, var break := intArray [10] of 0, name: string}
+
+in
+
+end
