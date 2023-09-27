@@ -1,68 +1,7 @@
-63 shift/reduce conflicts
+2 shift/reduce conflicts
 
 error:  state 11: shift/reduce conflict (shift RPAREN, reduce by rule 33)
 error:  state 14: shift/reduce conflict (shift LBRACK, reduce by rule 34)
-error:  state 100: shift/reduce conflict (shift OR, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift AND, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift GE, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift GT, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift LE, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift LT, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift NEQ, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift EQ, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift DIVIDE, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift TIMES, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift MINUS, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift PLUS, reduce by rule 20)
-error:  state 101: shift/reduce conflict (shift ELSE, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift OR, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift AND, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift GE, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift GT, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift LE, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift LT, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift NEQ, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift EQ, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift DIVIDE, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift TIMES, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift MINUS, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift PLUS, reduce by rule 18)
-error:  state 128: shift/reduce conflict (shift OR, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift AND, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift GE, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift GT, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift LE, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift LT, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift NEQ, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift EQ, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift DIVIDE, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift TIMES, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift MINUS, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift PLUS, reduce by rule 19)
-error:  state 130: shift/reduce conflict (shift OR, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift AND, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift GE, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift GT, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift LE, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift LT, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift NEQ, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift EQ, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift DIVIDE, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift TIMES, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift MINUS, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift PLUS, reduce by rule 23)
-error:  state 142: shift/reduce conflict (shift OR, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift AND, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift GE, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift GT, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift LE, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift LT, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift NEQ, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift EQ, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift DIVIDE, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift TIMES, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift MINUS, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift PLUS, reduce by rule 22)
 
 state 0:
 
@@ -2005,18 +1944,6 @@ state 99:
 
 	.	error
 
-error:  state 100: shift/reduce conflict (shift OR, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift AND, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift GE, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift GT, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift LE, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift LT, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift NEQ, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift EQ, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift DIVIDE, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift TIMES, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift MINUS, reduce by rule 20)
-error:  state 100: shift/reduce conflict (shift PLUS, reduce by rule 20)
 
 state 100:
 
@@ -2050,19 +1977,6 @@ state 100:
 
 	.	reduce by rule 20
 
-error:  state 101: shift/reduce conflict (shift ELSE, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift OR, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift AND, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift GE, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift GT, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift LE, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift LT, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift NEQ, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift EQ, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift DIVIDE, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift TIMES, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift MINUS, reduce by rule 18)
-error:  state 101: shift/reduce conflict (shift PLUS, reduce by rule 18)
 
 state 101:
 
@@ -2510,18 +2424,6 @@ state 127:
 
 	.	error
 
-error:  state 128: shift/reduce conflict (shift OR, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift AND, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift GE, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift GT, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift LE, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift LT, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift NEQ, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift EQ, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift DIVIDE, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift TIMES, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift MINUS, reduce by rule 19)
-error:  state 128: shift/reduce conflict (shift PLUS, reduce by rule 19)
 
 state 128:
 
@@ -2566,18 +2468,6 @@ state 129:
 
 	.	error
 
-error:  state 130: shift/reduce conflict (shift OR, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift AND, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift GE, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift GT, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift LE, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift LT, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift NEQ, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift EQ, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift DIVIDE, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift TIMES, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift MINUS, reduce by rule 23)
-error:  state 130: shift/reduce conflict (shift PLUS, reduce by rule 23)
 
 state 130:
 
@@ -2792,18 +2682,6 @@ state 141:
 
 	.	reduce by rule 56
 
-error:  state 142: shift/reduce conflict (shift OR, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift AND, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift GE, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift GT, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift LE, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift LT, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift NEQ, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift EQ, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift DIVIDE, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift TIMES, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift MINUS, reduce by rule 22)
-error:  state 142: shift/reduce conflict (shift PLUS, reduce by rule 22)
 
 state 142:
 

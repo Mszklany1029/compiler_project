@@ -695,7 +695,7 @@ end
 GEleft, _)) :: ( _, ( MlyValue.exp exp1, exp1left, _)) :: rest671)) =>
  let val  result = MlyValue.exp (fn _ => let val  exp1 = exp1 ()
  val  exp2 = exp2 ()
- in (A.OpExp{left = exp1, oper = A.GtOp, right = exp2, pos = GEleft})
+ in (A.OpExp{left = exp1, oper = A.GeOp, right = exp2, pos = GEleft})
 
 end)
  in ( LrTable.NT 1, ( result, exp1left, exp2right), rest671)

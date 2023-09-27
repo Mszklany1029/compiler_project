@@ -40,7 +40,10 @@ structure A = Absyn
 %value INT (1)
 %value STRING ("")
 
+
 %left ASSIGN
+%right THEN ELSE DO OF
+
 
 %left OR
 %left AND 
@@ -66,7 +69,7 @@ exp : INT	(A.IntExp INT)
     | exp LT exp	(A.OpExp{left = exp1, oper = A.LtOp, right = exp2, pos = LTleft}) (*SOLVE THIS WITH PRECEDENCE RULES? OR WOULD IT BE BETTER TO CREATE A NEW NONTERMINAL TO HANDLE ALL INSTANCES??*)
     | exp LE exp	(A.OpExp{left = exp1, oper = A.LeOp, right = exp2, pos = LEleft})
     | exp GT exp	(A.OpExp{left = exp1, oper = A.GtOp, right = exp2, pos = GTleft})
-    | exp GE exp	(A.OpExp{left = exp1, oper = A.GtOp, right = exp2, pos = GEleft})
+    | exp GE exp	(A.OpExp{left = exp1, oper = A.GeOp, right = exp2, pos = GEleft})
     | exp EQ exp	(A.OpExp{left = exp1, oper = A.EqOp, right = exp2, pos = EQleft})
     | exp NEQ exp	(A.OpExp{left = exp1, oper = A.NeqOp, right = exp2, pos = NEQleft})
     | exp AND exp	(A.IfExp{test = exp1, then' = exp2, else' = SOME (A.IntExp 0), pos = ANDleft}) (*THESE NEED TO BE IF EXPRESSIONS*)
