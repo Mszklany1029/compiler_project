@@ -1,0 +1,214 @@
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+Project 3: Semantic Analysis
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+In this project, you will build a semantic analysis/typechecking phase for
+your compiler.  This phase will check scope, perform typechecking, and check
+that various other language properties are conformed to (see below.)
+
+You will need to refer to the Tiger language specification, posted on BrightSpace.
+
+1) Download the 3-Semantic starting folder.  The following files are included:
+
+    - parse.sml - Calls the parser
+    - types.sml - Datatypes to define types for the Tiger language
+    - env.sig - a signature for an environment
+    - env.sml - partial implementation of an environment
+
+2) Copy all files EXCEPT parsetest.sml from 2-Parser to this folder.
+
+You will need to update you sources.cm to reference the above files.
+
+5) Examine types.sml.  This defines an SML datatype called "type", which will be used
+to define types of variables/expressions/values in the tiger language.
+
+In Tiger, each type expression creates a new type.  Thus, test29.tig has a type error:
+    /* error : different array types */
+    let
+        type arrtype1 = array of int
+        type arrtype2 = array of int
+
+        var arr1: arrtype1 := arrtype2 [10] of 0
+    in
+        arr1
+    end
+because, despite being structurally the same, arrtype1 and arrtype2 are different types.
+
+It is the expression that makes a new type, not simply declaring a new name.
+This is demonstrated by test30.tig, which should successfully typecheck:
+    /* synonyms are fine */
+    let 
+            type a = array of int
+            type b = a
+
+            var arr1:a := b [10] of 0
+    in
+            arr1[2]
+    end
+
+To allow implementing this behavior, the RECORD and ARRAY type constructors have "unique" fields, where:
+  type unique = unit ref
+
+The only operation possible with a unique is an equality check with another unique.
+Because of how references work in SML, each reference is distinct from each other reference,
+even if they refer to the same value.  Thus, we can use this uniques to check if two records/
+arrays are actually the same type.
+
+NAME types also have a ref, but that ref is to a (ty option).  A NAME type is
+a type synonym for another type.  For exammple, in test30.tig, above,
+a and b are both type synonym for (array of int).  The idea behind the (ty option) ref
+is that you can use the reference to store the underlying type that the NAME is a type synonym of.
+We have a (ty option), rather than directly a ty, to allow setting the reference to NONE
+before the underlying type has actually been computed.
+
+4) Examine env.sig and env.sml.
+
+These files define types for environments- mappings from symbols to
+bindings.  You will need two environments: one for variables and one for types.
+test53.tig demonstrates why having only a single environment is not sufficient:
+            let type a = int
+                var a : a := 5
+                var b : a := A
+            in b + a
+            end
+In test53.tig, `a` stands for a type in syntactic contexts requiring a type,
+and for a variable in syntactic contexts expecting a variable.
+
+5) env.sml is missing the "base" or default type and value environments-
+the environments corresponding to the built in types for the Tiger language.
+
+Fill in these base environments.  The type environment should include `int` and `string`.
+The value environment should include the builtin language functions, listed under "STANDARD LIBRARY"
+in the language definition.
+
+6) Examine semant.sml.
+
+This file includes a function `Main.compile`, which calls the parser, and passes the result to `transProg`.
+`transProg` is intended to perform semantic analysis of the program.
+
+(Currently, the name `transProg might not seem to make much sense.  In a future project, we will augment
+`transProg` to ALSO translate the program into an intermediate representation, alongside performing semantic analysis.)
+
+The other four "translation functions":
+    `transVar`
+    `transExp`
+    `transDec`
+    `transTy`
+are intended to serve as helper functions for `transProg`, to scope/typecheck each type from Absyn.sml. These functions
+are intended to be mutually recursive- for example, typecheck of a let expression will happen via transExp,
+but will need to call transDec.  transDec will need, in turn, to call transExp, to check the types of (for example)
+function bodies.
+
+TYPE SYNONYMS
+    You may define other functions as needed.  A useful function to define is:
+        fun actualTy (tenv : tenv) (ty : ty)
+    to convert NAME types into their underlying representations.  The "type" keyword in Tiger
+    is really just making a type synonym- that is, it is giving another name to an existing type.
+    An easy mistake to make is to report that a type synonym is not equal to it's underlying type.
+
+    It might be useful to maintain a property that the four translation functions will never directly return
+    a NAME type. Note that they might have to return types that have a NAME type nested somewhere inside
+    to avoid infinite loops.  For example the following type definition (from test5.tig):
+        type tree ={key: int, children: treelist}
+        type treelist = {hd: tree, tl: treelist}
+    is allowed, and relies on "treelist" and "tree" being represented as NAMEs to avoid an infinite loop.
+
+(MUTUALLY) RECURSIVE DEFINITIONS
+    Functions can be (mutually) recursive.  Typechecking thus must proceed in two phases:
+        (1) First, information about all mutually recursive declarations- the parameter and return types- must be read into the value environment.
+        (2) Second, the bodies of the functions must be typecheck, with all mutually recursive declarations known.
+
+    Types can similarly be recursive.  They require a similar two phase approach: first, all possibly relevant type names must be found.
+    Then, correctness (for example, are all referenced types in scope) must be checked. 
+
+ERROR REPORTING
+    Use the provided `ErrorMsg.error` function to report errors.  Do not ever raise an exception-
+    instead, still return some type even when reporting an error.  This will allow reporting
+    multiple error messages when appropriate, rather than immediately halting.
+
+7) A test script and a number of test tiger programs are provided.
+
+The test script looks for certain capitalized keywords to indicate certain kinds of errors.
+You MUST include these capitalized keywords in your error message if, and only if, a corresponding error occurs.
+You are encouraged to make your error messages more detailed (for example, output the types involved in a type mismatch,
+or the name of a variable that is out of scope) but are not required to follow any specific format when doing so.
+The keywords are:
+
+    TYPE - to indicate a typing error 
+            - an expression of type A appears in a context expecting an expression of incompataible type B
+            - `nil` appears in a context where its type cannot be inferred
+            - a procedure returns a value
+
+    SCOPE - to indicate a scoping error 
+            - a variable, function, or type name that has not been defined is used
+            - a defined variable, function, or type name is used in an unexpected context- i.e. a variable name is used as a function
+            - a function has malformed/missing/extraneous arguments
+            - a record is missing fields or has extra/unexpected/misordered fields
+
+    LOOP - to indicate that there is a recursive type cycle that does not pass through a record or array type
+
+    DUPLICATE - to indicate duplicate names in the same mutually recursive set of definitions
+            - two functions with the same name appear in the same mutually recursive set
+            - two types with the same name appear in the same mutually recursive set
+
+    READONLY - indicates that a readonly variable is assigned to
+
+    MISPLACED - indicates that a break expression is not in a while or for loop 
+
+Each test file that generates any error messages includes two comments at the top of the file.
+The first comment (on line 1) is intended to be parsed by the test script.  It is formatted as:
+/*| [SPACE SEPARATED LIST OF KEYWORDS] |*/
+The second comment (starts on line 2) is a plain language description of why the errors occur.
+
+For example, test54.tig generates type and scope errors, and so includes the error lines:
+
+    /*| TYPE SCOPE |*/
+    /* error: At line 5 the variable y is out of scope.
+            At line 8, x is declared as a string, but initialized to an int  */
+    let
+        function f() : int :
+            let var x := 1 in y end
+
+        function g() : string:
+            let var x : string := 1 in x end
+    in
+        g()
+    end
+
+Even if multiple errors of a given type will be emitted for a certain test, the keyword
+will only appear in the comment once.  The order of the keywords in the comment is not significant.
+
+The test script checks if your semantic checker outputs the expected set of capitalized keywords.
+Outputting capitalized words that are not expected, or failing to output expected capitalized words,
+will cause a test to fail.
+
+8) semant.sml contains a Main structure with two separate functions: comp and compile.
+
+The `Main.comp` function must take the filename of a tiger program, return a `ty` for the tiger program in the file,
+and print the required error messages.  This is intended to make testing in the sml REPL straightforward.
+
+You may not modify `Main.compile` at all.  `Main.compile` exists to be able to compile the project
+for use by the test script- you can examine the test script if you are curious about how this works.
+You may modify all other functions and types as needed, and structure your code however you
+like: the provided definitions are simply suggested starting points.
+
+------------------------------------------------------------------------------
+
+After completing the above steps, you can use test.py to check your semantic analyzer.
+
+------------------------------------------------------------------------------
+
+Test Case Submission
+Alongside the project, you must submit at least 5 new test cases. At least 3 of these test cases must raise semantic errors,
+at least 1 must not have semantic errors.  All must pass the lexer and parser.  Please submit the test cases in a folder separate from
+the existing testcases, (so that finding your test cases is easy).  Test cases that raise semantic errors must be correctly commented to
+work with the test script (you can test this by putting your test cases in the folder with the existing test cases.)
+
+Please try to make the test cases interesting- in that they either implement (a broken version of) some kind of (semi-)realistic algorithm,
+or they somehow assisted you in debugging your semantic checker.  You can use comments to help argue interesting-ness.
+
+Some subset of the submitted test cases will be incorporated into the grading of Project 3, and possibly future projects.
+Submitted test cases MAY be distributed to other students in this class, or to classes future semesters
+(so don't include anything you are not comfortable being distributed.)
