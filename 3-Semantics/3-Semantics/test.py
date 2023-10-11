@@ -57,6 +57,6 @@ def runFiles(folder, expected):
     return (corr, total)
 
 subprocess.run(["ml-build", "sources.cm", "Main.compile", exe])
-(c, t) = runFiles("../testcases/", 2)
+(c, t) = runFiles("testcases/", 2) #REMOVED DOT DOT/ PUT IT BACK
 
 print(str(c) + "/" + str(t))
