@@ -6,10 +6,24 @@ struct
   type venv = Env.enventry Symbol.table
   type tenv = T.ty Symbol.table
 
-    fun checkInt (pos : A.pos) (ty : T.ty) =
-      case ty
-          of T.INT => ()
-           | _ => ErrorMsg.error pos "TYPE: Expected Int, got other type";
+  fun checkTypes (pos : A.pos) (t1, t2 : T.ty * T.ty) : string = 
+      case (t1, t2) of (T.INT, T.INT) => ()
+         | (T.STRING, T.STRING) => ()
+         | (T.BOTTOM, _) => ()
+         | (T.INT, T.INT) => ()
+         | (T.RECORD, T.NIL) => ()
+         | (T.NIL, T.RECORD) => ()
+         | (T.RECORD, T.RECORD) => ()
+         | (T.ARRAY, T.ARRAY) => ()     (*THERE MIGHT BE MORE TYPE COMPARISONS TO ADD*)
+         | _ => (ErrorMsg.error pos ("FUNCTION ARGS: Expected " ^ Symbol.name t2 ^ ", given " ^ Symbol.name t1); T.BOTTOM)
+
+
+
+
+  fun checkInt (pos : A.pos) (ty : T.ty) =
+    case ty
+        of T.INT => ()
+          | _ => ErrorMsg.error pos "TYPE: Expected Int, got other type";
   
   fun lookupTy (pos : A.pos) (ty_sym : A.symbol) (tenv : tenv) : T.ty =
       case Symbol.look (tenv, ty_sym)
@@ -24,6 +38,7 @@ struct
 
   and transExp (venv : venv) (tenv : tenv) (e : A.exp) : T.ty =
     let
+       
       fun trexp (A.VarExp (A.SimpleVar (s, pos))) =
             (* TODO: CAll transVar *)
             (case Symbol.look(venv, s) of
@@ -49,9 +64,8 @@ struct
           (* TODO: this only checks if a function exists, also need to check
           * arguments - DONE I THINK*)
           case Symbol.look (venv, func)
-            of SOME (Env.FunEntry {formals, result} ) => if((map trexp args) =
-            formals) then result else (ErrorMsg.error pos "SCOPE: function has
-            bad args"; T.BOTTOM) 
+            of SOME (Env.FunEntry {formals, result} ) => if(List.length (map trexp args) =
+           List.length formals) then result else (ErrorMsg.error pos "NUMARGS: function has incorrect number of args"; T.BOTTOM)
              | _ => (ErrorMsg.error pos "SCOPE: function is out of scope"; T.BOTTOM)
     in
     trexp e

@@ -12,7 +12,8 @@ struct
     (*(ErrorMsg.error 0 "fill in with builtin types"; raise
     ErrorMsg.Error)*)
 
-    val base_venv = Symbol.empty
+    val base_venv = Symbol.empty (*WHY SYMBOL.EMPTY AND NOT ENVENTRY
+    SYMBOL.TABLE??*)
       (*(ErrorMsg.error 0 "fill in with builtin functions"; raise
     ErrorMsg.Error)*)
 end

@@ -1,5 +1,5 @@
-let function f(x : int) : int = 4
-	function g(y : int) : int = 9
-	in
-		f(2) = 5
-	end
+let
+	function f(y : int, z : int) : int = 9
+in
+	f(2) + 2
+end
