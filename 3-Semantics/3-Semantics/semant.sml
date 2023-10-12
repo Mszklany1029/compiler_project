@@ -6,16 +6,20 @@ struct
   type venv = Env.enventry Symbol.table
   type tenv = T.ty Symbol.table
 
-  fun checkTypes (pos : A.pos) (t1, t2 : T.ty * T.ty) : string = 
+  fun checkTypes (pos : A.pos) ((t1, t2) : T.ty * T.ty) : unit = 
       case (t1, t2) of (T.INT, T.INT) => ()
          | (T.STRING, T.STRING) => ()
          | (T.BOTTOM, _) => ()
-         | (T.INT, T.INT) => ()
-         | (T.RECORD, T.NIL) => ()
-         | (T.NIL, T.RECORD) => ()
-         | (T.RECORD, T.RECORD) => ()
-         | (T.ARRAY, T.ARRAY) => ()     (*THERE MIGHT BE MORE TYPE COMPARISONS TO ADD*)
-         | _ => (ErrorMsg.error pos ("FUNCTION ARGS: Expected " ^ Symbol.name t2 ^ ", given " ^ Symbol.name t1); T.BOTTOM)
+         | (T.INT, T.INT) => ()                        (*DO WE NEED T.BOTTOM
+         EVERYTIME WE CALL ERROR??*)
+         | (T.RECORD (_, _), T.NIL) => ()
+         | (T.NIL, T.RECORD (_, _)) => ()
+         | (T.RECORD (_, u1), T.RECORD (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("FUNCTION ARGS"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^
+           u1*))(*; T.BOTTOM*))
+         | (T.ARRAY (_, u1), T.ARRAY (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("FUNCTION ARGS"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^
+           u1*))(*; T.BOTTOM*))    (*THERE MIGHT BE MORE TYPE COMPARISONS TO ADD*)
+         | _ => (ErrorMsg.error pos ("FUNCTION ARGS"(*"FUNCTION ARGS: Expected " ^ t2 ^ ", given"
+         ^ t1*))(*; T.BOTTOM*))
 
 
 
