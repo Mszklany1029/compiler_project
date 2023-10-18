@@ -1,0 +1,41 @@
+- Parse.sml - calls parser, can probably ignore this
+- types.sml - Datatypes to define types for tiger langauge MAD IMPORTANT
+- env.sig - Signature for an environment
+- env.sml - very importnat for environment stuff, will need to add base functions to this
+- REMINDER: MIGHT STILL NEED TO COME BACK AND MODIFY TEST SCRIPT 
+
+
+Types.sml
+- "unique" fields in RECORD and ARRAY are unit refs, purpose is to check if two things are actually the ssame type as various unit refs will be different in memory
+
+- Name types have a ref to a (ty option)
+	- NAME type is a type synonym for another type
+	- can use the ty option ref to store the underlying type that the NAME is a type synonym of 
+	- ty option,rather than a ty, to allow setting reference to NONE before underlying type has actually been computed
+
+env.sig and env.sml:
+ - define types for environments - mappings from symbols to bindings
+ - two environments: variables (venv) and types (tenv)
+
+semant.sml:
+ - transVar, transExp, transDec, and transTy should all be mutually recursive
+ - ex: typecheck of let exp happens via transExp, will need to call transDec. transDec will need to call transExp, to check types of function bodies
+
+ - TransVar:
+ 	- takes in venv, tenv and v, which is an Absyn.var, needs to return some T.ty
+	- FIGURE OUT WHAT T.TY IS GOING TO BE
+	- Will handle variables
+
+
+ - TransExp:
+ 	- Takes in venv, tenv, and e which is Absyn.exp, returns some T.ty, might be T.ty in some cases??? but in others could be smth else, but this could be true for all of semant
+
+ - TransDec: 
+ 	- Takes in d which Absyn.dec appears to return a venve and a tenv
+
+ - TransTy: 
+ 	- Takes in e which is A.ty, returns a T.ty
+
+
+
+MUTUAL RECURSION COME BACK WHEN READY:

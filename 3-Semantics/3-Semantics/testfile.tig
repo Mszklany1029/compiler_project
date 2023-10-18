@@ -1,5 +1,5 @@
 let
-	function f(y : int, z : int) : int = 9
+	function f(y : int, z : string) : int = 9
 in
-	f(2) + 2
+	f(2, 2) + 2
 end

@@ -9,20 +9,17 @@ struct
   fun checkTypes (pos : A.pos) ((t1, t2) : T.ty * T.ty) : unit = 
       case (t1, t2) of (T.INT, T.INT) => ()
          | (T.STRING, T.STRING) => ()
-         | (T.BOTTOM, _) => ()
-         | (T.INT, T.INT) => ()                        (*DO WE NEED T.BOTTOM
-         EVERYTIME WE CALL ERROR??*)
+         | (T.BOTTOM, _) => ()                        (*DO WE NEED T.BOTTOM EVERYTIME WE CALL ERROR??*)
          | (T.RECORD (_, _), T.NIL) => ()
          | (T.NIL, T.RECORD (_, _)) => ()
-         | (T.RECORD (_, u1), T.RECORD (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("FUNCTION ARGS"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^
-           u1*))(*; T.BOTTOM*))
-         | (T.ARRAY (_, u1), T.ARRAY (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("FUNCTION ARGS"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^
-           u1*))(*; T.BOTTOM*))    (*THERE MIGHT BE MORE TYPE COMPARISONS TO ADD*)
+         | (T.RECORD (_, u1), T.RECORD (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("FUNCTION ARGS"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^ u1*))(*; T.BOTTOM*))
+         | (T.ARRAY (_, u1), T.ARRAY (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("FUNCTION ARGS"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^ u1*))(*; T.BOTTOM*))    (*THERE MIGHT BE MORE TYPE COMPARISONS TO ADD*)
          | _ => (ErrorMsg.error pos ("FUNCTION ARGS"(*"FUNCTION ARGS: Expected " ^ t2 ^ ", given"
          ^ t1*))(*; T.BOTTOM*))
 
-
-
+  fun aux_checkTypes (pos : A.pos) ([] : T.ty list) ([] : T.ty list) : unit = ()
+    | aux_checkTypes pos (arg :: args) (formal :: formals) = (checkTypes pos (arg, formal); aux_checkTypes pos args formals)
+    
 
   fun checkInt (pos : A.pos) (ty : T.ty) =
     case ty
@@ -38,20 +35,60 @@ struct
          | SOME ty => ty
          | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM)
 
-  fun transVar (venv : venv) (tenv : tenv) (v : A.var) : T.ty = (ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)
+  fun transVar (venv : venv) (tenv : tenv) (v : A.var) : T.ty =
+    let
+      fun trvar()
+    in
+    trvar v
+    end
+    (*(ErrorMsg.`error 0 "not implemented"; raise ErrorMsg.Error)*)
 
   and transExp (venv : venv) (tenv : tenv) (e : A.exp) : T.ty =
     let
        
       fun trexp (A.VarExp (A.SimpleVar (s, pos))) =
+
             (* TODO: CAll transVar *)
             (case Symbol.look(venv, s) of
                 SOME (Env.VarEntry { ty }) => ty
               | NONE => (ErrorMsg.error pos "SCOPE: variable not found"; T.BOTTOM))
         | trexp (A.OpExp { left, oper=A.PlusOp, right, pos} : A.exp) : T.ty =
-        (checkInt pos (trexp left);
-         checkInt pos (trexp right);
-           T.INT)
+          (checkInt pos (trexp left);
+           checkInt pos (trexp right); T.INT)
+        | trexp (A.OpExp { left, oper = A.MinusOp, right, pos} : A.exp) : T.ty = 
+          (checkInt pos (trexp left);
+           checkInt pos (trexp right); T.INT)
+        | trexp (A.OpExp { left, oper = A.TimesOp, right, pos} : A.exp) : T.ty = 
+          (checkInt pos (trexp left); 
+           checkInt pos (trexp right); T.INT)
+        | trexp (A.OpExp { left, oper = A.DivideOp, right, pos} : A.exp) : T.ty =
+          (checkInt pos (trexp left);
+           checkInt pos (trexp right); T.INT)
+        | trexp (A.OpExp { left, oper = A.LtOp, right, pos} : A.exp) : T.ty =
+          (checkInt pos (trexp left);
+           checkInt pos (trexp right); T.INT)
+        | trexp (A.OpExp { left, oper = A.GtOp, right, pos} : A.exp) : T.ty =
+          (checkInt pos (trexp left);
+           checkInt pos (trexp right); T.INT)
+        | trexp (A.OpExp { left, oper = A.LeOp, right, pos} : A.exp) : T.ty =
+          (checkInt pos (trexp left);
+           checkInt pos (trexp right); T.INT)
+        | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp) : T.ty =
+          (checkInt pos (trexp left);
+           checkInt pos (trexp right); T.INT)
+        | trexp(A.IfExp {test, then', else' = NONE, pos} : A.exp) : T.ty =
+          (checkInt pos (trexp test); T.UNIT)
+        | trexp(A.IfExp {test, then', else' = SOME(exp3), pos} : A.exp) : T.ty =
+          (checkInt pos (trexp test); checkTypes pos (trexp then', trexp exp3);
+          T.UNIT) (*THIS MIGHT BE WRONG*)
+        | trexp(A.WhileExp {test, body, pos}: A.exp) : T.ty = 
+          (checkInt pos (trexp test); T.UNIT)
+        | trexp()
+
+
+
+
+
         | trexp (A.IntExp _) = T.INT
         | trexp (A.StringExp _) = T.STRING
         (* TODO: Handle multiple declarations*)
@@ -68,9 +105,18 @@ struct
           (* TODO: this only checks if a function exists, also need to check
           * arguments - DONE I THINK*)
           case Symbol.look (venv, func)
-            of SOME (Env.FunEntry {formals, result} ) => if(List.length (map trexp args) =
-           List.length formals) then result else (ErrorMsg.error pos "NUMARGS: function has incorrect number of args"; T.BOTTOM)
+            of SOME (Env.FunEntry {formals, result} ) => if(List.length (map
+            trexp args) <> List.length formals) then (ErrorMsg.error pos
+            "NUMARGS: function has incorrect number of args"; T.BOTTOM) else
+              (aux_checkTypes pos (map trexp args) (formals); result) 
              | _ => (ErrorMsg.error pos "SCOPE: function is out of scope"; T.BOTTOM)
+        (*| trexp (A.ArrayExp {typ, size, init, pos} ) = 
+          (case Symbol.look (tenv, typ)
+            of SOME(Env.VarEntry {ty}) => (checkInt pos (trexp size);
+            checkTypes pos (()) )
+          )
+        | trexp (A.AssignExp {})*)
+          
     in
     trexp e
     end
@@ -78,6 +124,7 @@ struct
   
   and transDec (venv : venv) (tenv : tenv) (d : A.dec) : { venv : venv, tenv : tenv} =
     let
+
       fun getFunEntry ({name, params, result, body, pos} : A.fundec)
                               : ((Symbol.symbol * Env.enventry)
                                       * A.exp
@@ -92,7 +139,6 @@ struct
 
               val res = case result
                           of SOME (r, p) => lookupTy p r tenv
-                           | NONE => T.UNIT
 
           in
           ((name, Env.FunEntry { formals = map fieldType params, result = res}), body, arg_entry, pos)
@@ -132,12 +178,31 @@ struct
         in
         (checkAllFunEntry fes; {venv = new_venv, tenv = tenv})
         end
+      
+    | trdec(A.TypeDec (ts )) = 
+      (List.foldl(fn ({name,...}, tv') => Symbol.enter(tv', name, T.NAME (name,
+      ref NONE)) ) tenv ts; {venv = venv, tenv = tenv})
     in
     trdec d
     end
 
   
-  and transTy                (tenv : tenv) (e : A.ty) : T.ty = (ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)
+  and transTy                (tenv : tenv) (e : A.ty) : T.ty =
+  let
+    fun trTy( A.NameTy (symbol, pos)) = T.NAME(symbol, ref NONE) (*COME BACK TO
+      THIS DEFINITELY NOT DONE*) 
+  in
+    trTy e
+  end
+ (* let 
+    (*fun trty (A.ArrayTy (symbol, pos)) = T.ARRAY(
+      case of Symbol.look(tenv, symbol),
+      T.unique)*)
+
+  in 
+  trty e
+  end*)
+  (*(ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)*)
 
   fun transProg e = transExp Env.base_venv Env.base_tenv e
 end
