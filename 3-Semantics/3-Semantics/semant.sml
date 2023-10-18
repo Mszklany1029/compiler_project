@@ -27,21 +27,14 @@ struct
           | _ => ErrorMsg.error pos "TYPE: Expected Int, got other type";
   
   fun lookupTy (pos : A.pos) (ty_sym : A.symbol) (tenv : tenv) : T.ty =
-      case Symbol.look (tenv, ty_sym)
-        of SOME (T.NAME (_, r)) =>
+      case Symbol.look (tenv, ty_sym) of SOME (T.NAME (_, r)) =>
               (case !r
                 of SOME ty => ty
                   | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM))
          | SOME ty => ty
          | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM)
 
-  fun transVar (venv : venv) (tenv : tenv) (v : A.var) : T.ty =
-    let
-      fun trvar()
-    in
-    trvar v
-    end
-    (*(ErrorMsg.`error 0 "not implemented"; raise ErrorMsg.Error)*)
+  fun transVar (venv : venv) (tenv : tenv) (v : A.var) : T.ty = (ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)
 
   and transExp (venv : venv) (tenv : tenv) (e : A.exp) : T.ty =
     let
@@ -83,10 +76,6 @@ struct
           T.UNIT) (*THIS MIGHT BE WRONG*)
         | trexp(A.WhileExp {test, body, pos}: A.exp) : T.ty = 
           (checkInt pos (trexp test); T.UNIT)
-        | trexp()
-
-
-
 
 
         | trexp (A.IntExp _) = T.INT
@@ -180,8 +169,12 @@ struct
         end
       
     | trdec(A.TypeDec (ts )) = 
-      (List.foldl(fn ({name,...}, tv') => Symbol.enter(tv', name, T.NAME (name,
-      ref NONE)) ) tenv ts; {venv = venv, tenv = tenv})
+    let 
+      val prelim_tenv = List.foldl(fn ({name,...}, tv') => Symbol.enter(tv',name, T.NAME (name, ref NONE)) ) tenv ts
+      val prelim_tenv2 = List.foldl(fn ({name, ty, pos}, tv') => Symbol.enter(tv', name, lookupTy pos name prelim_tenv) )tenv ts
+    in 
+        {venv = venv, tenv = prelim_tenv2}
+    end
     in
     trdec d
     end
@@ -189,8 +182,10 @@ struct
   
   and transTy                (tenv : tenv) (e : A.ty) : T.ty =
   let
-    fun trTy( A.NameTy (symbol, pos)) = T.NAME(symbol, ref NONE) (*COME BACK TO
-      THIS DEFINITELY NOT DONE*) 
+    fun trTy( A.NameTy (symbol, pos)) = lookupTy pos symbol tenv (*T.NAME(symbol,Symbol.look(tenv,
+      symbol))*) (*COME BACK TOTHIS DEF NOT DONE*) 
+      | trTy(A.ArrayTy (symbol,pos)) = T.ARRAY(lookupTy pos symbol tenv, ref ())
+
   in
     trTy e
   end

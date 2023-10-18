@@ -1,5 +1,7 @@
 let
 	function f(y : int, z : string) : int = 9
+	type arrtype = array of myint
+	
 in
 	f(2, 2) + 2
 end
