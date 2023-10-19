@@ -1,7 +1,11 @@
 let
-	function f(y : int, z : string) : int = 9
-	type arrtype = array of myint
-	
+        function f(y : int, z : string) : int = 9
+        type a = b
+        type b = c
+        type c = d
+        type d = myint
+        type myint = int
+        
 in
-	f(2, 2) + 2
+        f(2, 2) + 2
 end

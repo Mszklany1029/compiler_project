@@ -48,6 +48,8 @@ def runFiles(folder, expected):
                 print("2 " + err)
                 incorrect = True
 
+        if out.find("uncaught exception Match") != -1:
+            incorrect = True
         if incorrect:
             prRed("\tIncorrect");
         else:

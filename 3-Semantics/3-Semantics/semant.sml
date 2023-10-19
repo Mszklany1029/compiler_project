@@ -47,7 +47,64 @@ struct
        | _ => ErrorMsg.error pos "TYPE: Incompatible type comparison" (*IMPROVE
        ERROR MESSAGE:?*)
 
+
+    (*CASES FOR OTHER TYPES*)
+  fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
+    let
+      fun detectCycle ([] : T.ty list) (ty : T.ty) (pos : A.pos) = (ty :: [])
+        | detectCycle (t :: tys) (ty) (pos) = 
+          if List.exists (fn ty => ty = t ) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); tys) else ty :: tys
+            
+        
+    in
+      (case t
+        of T.NAME(symb, tyop) =>
+          (case !tyop 
+            of SOME ty => ( if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else dig ty tenv pos (t :: tys))
+              | NONE =>
+                  (case Symbol.look(tenv, symb)
+                    of SOME s => (tyop := SOME s; if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else dig s tenv pos (t :: tys))
+                      | NONE => t
+                  )
+            )
+          (*| T.ARRAY(otherty, u) => T.ARRAY(otherty, u)*)
+          | _ => t
+      )
+    end
   
+  (*fun dig (name : Symbol.symbol) (tenv : tenv) (pos : A.pos) : T.ty =
+    (case Symbol.look(tenv, name) of SOME (T.NAME (_, tyop)) =>
+      (case !tyop of SOME (T.NAME(symb, _)) => dig symb tenv pos
+       | NONE => 
+           (case Symbol.look(tenv, symb) 
+            of SOME s => (tyop := SOME s; dig symb tenv pos )
+            )
+          )
+    | SOME (T.ARRAY(t, u)) => T.ARRAY((dig name tenv pos), u) 
+    | _ => ty
+        )*)
+    
+(*  fun dig (name : Symbol.symbol ) (tenv : tenv) (pos : A.pos) : T.ty =
+        (case Symbol.look(tenv, name) of SOME (T.NAME (_, tyop)) =>
+          (case !tyop of SOME (T.NAME(symb,_)) => dig symb tenv pos
+             | NONE => 
+                 (case Symbol.look(tenv, symb)
+                   of NONE => ty
+                    | SOME sym => (tyop := SOME sym; dig tenv symb pos))
+                    (*SYMBOL NAME ISSUE*)
+
+            )
+            | SOME T.ARRAY(t, u) => T.ARRAY(dig name tenv pos, u) (*MIGHT BE WRONG? SYMBOL
+            NAME ISSUE*)
+        )*)
+           (*| SOME (T.INT) => T.INT
+           | SOME (T.STRING) => T.STRING
+           | SOME (T.ARRAY (t, u)) => T.ARRAY
+           | SOME (T.RECORD (_, u)) => T.RECORD
+           (*| SOME ty => ty*)
+           | NONE => (ErrorMsg.error pos "TYPE: NO TYPE FOUND BY DIG, COME BACK
+           AND CHANGE THIS"; T.BOTTOM)*)
+ 
   (*fun getName(pos : A.pos) (symb : Symbol.symbol) (tenv)*)
   
   fun lookupTy (pos : A.pos) (ty_sym : A.symbol) (tenv : tenv) : T.ty =
@@ -58,7 +115,18 @@ struct
          | SOME ty => ty
          | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM)
 
-  fun transVar (venv : venv) (tenv : tenv) (v : A.var) : T.ty = (ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)
+  fun transVar (venv : venv) (tenv : tenv) (v : A.var) : T.ty =
+    let
+      fun trVar (A.SimpleVar (symbol, pos)) = 
+        (case Symbol.look(venv, symbol)
+          of SOME (Env.VarEntry {ty}) => dig ty tenv pos [] (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
+           | SOME (Env.FunEntry { formals, result}) => result
+           | NONE => (ErrorMsg.error pos "SCOPE: no variable found"; T.BOTTOM))
+          
+    in 
+      trVar v
+    end
+    (*(ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)*)
 
   and transExp (venv : venv) (tenv : tenv) (e : A.exp) : T.ty =
     let
@@ -217,14 +285,18 @@ struct
       val tenv = List.foldl(fn ({name, ty, pos}, tv')=>Symbol.enter(tv', name, transTy prelim_tenv ty) )tenv ts
 
       (*COME BACK AND ADD SEEN LIST STUFF*)
-      fun dig (name : Symbol.symbol ) (tenv : tenv) (pos : A.pos) : T.ty =
+      (*fun dig (name : Symbol.symbol ) (tenv : tenv) (pos : A.pos) : T.ty =
         case Symbol.look(tenv, name) of SOME (T.NAME (_, tyop)) =>
           case !tyop of SOME (T.NAME(symb,_)) => dig symb tenv pos
            | SOME ty => ty
-           | NONE => (ErrorMsg.error pos "TYPE: NO TYPE FOUND BY DIG, COME BACK AND CHANGE THIS"; T.BOTTOM)
-      fun tenv_update (tenv : tenv) =  List.map (fn ({name, ty, pos}) => 
+           | NONE => (ErrorMsg.error pos "TYPE: NO TYPE FOUND BY DIG, COME BACK
+           AND CHANGE THIS"; T.BOTTOM)*)
+      (*fun tenv_update (tenv : tenv) =  List.map (fn ({name, ty, pos}) => 
         case Symbol.look(prelim_tenv, name) of SOME (T.NAME(name, r)) => r :=
-          SOME (dig name tenv pos)) ts
+          SOME (dig name tenv pos)) ts*)
+      fun tenv_update(tenv : tenv) = List.map (fn {name, ty, pos} => case
+        Symbol.look(prelim_tenv, name) of SOME (T.NAME(name, r)) => r :=
+        SOME(dig (valOf (Symbol.look(tenv, name))) tenv pos [] )) ts
 
     in
         tenv_update tenv;
@@ -237,13 +309,12 @@ struct
   
   and transTy                (tenv : tenv) (e : A.ty) : T.ty =
   let
-    fun trTy( A.NameTy (symbol, pos)) = lookupTy pos symbol tenv (*T.NAME(symbol,Symbol.look(tenv,
+    fun trTy( A.NameTy (symbol, pos)) = valOf (Symbol.look(tenv, symbol)) (*T.NAME(symbol,Symbol.look(tenv,
       symbol))*) (*COME BACK TOTHIS DEF NOT DONE*) 
-      | trTy(A.ArrayTy (symbol,pos)) = T.ARRAY(lookupTy pos symbol tenv, ref ())
+      | trTy(A.ArrayTy (symbol,pos)) = T.ARRAY(valOf (Symbol.look(tenv, symbol)), ref ())
       | trTy (A.RecordTy tyfields) = 
         let
-          val tyfs = map(fn {name, escape, typ, pos} => (name, (lookupTy pos typ
-          tenv)) ) tyfields (*COME BACK TO THIS?????? MIGHT NEED PARTIAL TYDEPENDING ON IF NONE REF*) 
+          val tyfs = map(fn {name, escape, typ, pos} => (name, valOf (Symbol.look(tenv, typ))) ) tyfields (*COME BACK TO THIS?????? MIGHT NEED PARTIAL TYDEPENDING ON IF NONE REF*) 
 
         in
           T.RECORD(tyfs, ref ())
