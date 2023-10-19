@@ -37,7 +37,15 @@ struct
        | (T.INT, T.INT) => ()
        | _ => (ErrorMsg.error pos "TYPE: Incompatible type comparison")
 
- 
+  fun checkEqArgs (pos : A.pos) ((t1, t2): T.ty * T.ty) : unit = 
+    case (t1, t2)
+      of (T.STRING, T.STRING) => ()
+       | (T.INT, T.INT) => ()
+       | (T.ARRAY (_, u1), T.ARRAY (_, u2)) => () (*COME BACK TO THIS! FIND OUT IF I HAVE TO DO THE REFERENCE COMPARISON HERE OR IF THAT HAPPENS LATER?*)
+       | (T.RECORD (_, u1), T.RECORD (_, u2)) => () (*SAME QUESTION AS WITH
+       ARRAYS*)
+       | _ => ErrorMsg.error pos "TYPE: Incompatible type comparison" (*IMPROVE
+       ERROR MESSAGE:?*)
 
   
   (*fun getName(pos : A.pos) (symb : Symbol.symbol) (tenv)*)
@@ -81,26 +89,42 @@ struct
           (checkCompArgs pos (trexp left, trexp right); T.INT)
         | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp) : T.ty =
           (checkCompArgs pos (trexp left, trexp right); T.INT)
-        | trexp(A.IfExp {test, then', else' = NONE, pos} : A.exp) : T.ty =
+        | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp) : T.ty = 
+          (checkEqArgs pos (trexp left, trexp right); T.INT)
+        | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp) : T.ty = 
+          (checkEqArgs pos (trexp left, trexp right); T.INT)
+        (*| trexp (A.IfExp {test, then', else' = SOME (A.IntExp 0), pos}) : T.ty = *)
+          
+        | trexp (A.IfExp {test, then', else' = NONE, pos} : A.exp) : T.ty =
           (checkInt pos (trexp test); T.UNIT)
-        | trexp(A.IfExp {test, then', else' = SOME(exp3), pos} : A.exp) : T.ty =
+        | trexp (A.IfExp {test, then', else' = SOME(exp3), pos} : A.exp) : T.ty =
           (checkInt pos (trexp test); checkTypes pos (trexp then', trexp exp3);
           T.UNIT) (*THIS MIGHT BE WRONG*)
-        | trexp(A.WhileExp {test, body, pos}: A.exp) : T.ty = 
-          (checkInt pos (trexp test); T.UNIT)
-
+        | trexp (A.WhileExp {test, body, pos}: A.exp) : T.ty = 
+          (checkInt pos (trexp test); T.UNIT) (*COME BACK*)
+        
+        (*| trexp(A.ForExp)*)
 
         | trexp (A.IntExp _) = T.INT
-        | trexp (A.StringExp _) = T.STRING
+        | trexp (A.StringExp _) = T.STRING (*TRANSLATE TO STRING?*)
         (* TODO: Handle multiple declarations*)
-        | trexp (A.LetExp {decs = [dec], body, pos}) =
-            let val {venv=venv2, tenv=tenv2} =
+        | trexp (A.LetExp {decs = decs, body, pos}) =
+          (case decs
+            of dec :: ds => (let
+                              val {venv = venv2, tenv = tenv2} = transDec venv tenv dec
+                            in 
+                              transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos})
+                            end)
+              | [] => (transExp venv tenv body))
+            (*let val {venv=venv2, tenv=tenv2} =
+              (*List.foldl (fn dec => transDec venv tenv dec) {venv = venv, tenv
+              * = tenv} decs*)
               (*case decs of [] => T.UNIT
                  | dec => transDec venv tenv dec
                  | dec :: decs => (transDec venv tenv dec; trexp (A.LetExp{decs,
                  body, pos}))*)
             transDec venv tenv dec
-            in transExp venv2 tenv2 body end
+            in transExp venv2 tenv2 body end*)
           (* TODO: Handle SeqExps with more than one expression - DONE I THINK? *)
         | trexp (A.SeqExp e) = 
           (case e
@@ -110,19 +134,21 @@ struct
         | trexp (A.CallExp {func, args, pos}) =
           (* TODO: this only checks if a function exists, also need to check
           * arguments - DONE I THINK*)
-          case Symbol.look (venv, func)
+          (case Symbol.look (venv, func)
             of SOME (Env.FunEntry {formals, result} ) => if(List.length (map
             trexp args) <> List.length formals) then (ErrorMsg.error pos
             "NUMARGS: function has incorrect number of args"; T.BOTTOM) else
               (aux_checkTypes pos (map trexp args) (formals); result) 
-             | _ => (ErrorMsg.error pos "SCOPE: function is out of scope"; T.BOTTOM)
-        (*| trexp (A.ArrayExp {typ, size, init, pos} ) = 
-          (case Symbol.look (tenv, typ)
+             | _ => (ErrorMsg.error pos "SCOPE: function is out of scope"; T.BOTTOM))
+        (*| trexp (A.AssignExp {var, exp, pos}) = T.UNIT*)
+
+        | trexp (A.ArrayExp {typ, size, init, pos} ) = 
+          (case Symbol.look (venv, typ) (*THIS MIGHT BE WRONG! WE MIGHT NOT WANT
+          TO LOOK IN THE VENV*)
             of SOME(Env.VarEntry {ty}) => (checkInt pos (trexp size);
-            checkTypes pos (()) )
-          )
-        | trexp (A.AssignExp {})*)
-          
+            checkTypes pos (trexp init, lookupTy pos typ tenv));
+          T.UNIT)
+                  
     in
     trexp e
     end
@@ -214,18 +240,18 @@ struct
     fun trTy( A.NameTy (symbol, pos)) = lookupTy pos symbol tenv (*T.NAME(symbol,Symbol.look(tenv,
       symbol))*) (*COME BACK TOTHIS DEF NOT DONE*) 
       | trTy(A.ArrayTy (symbol,pos)) = T.ARRAY(lookupTy pos symbol tenv, ref ())
+      | trTy (A.RecordTy tyfields) = 
+        let
+          val tyfs = map(fn {name, escape, typ, pos} => (name, (lookupTy pos typ
+          tenv)) ) tyfields (*COME BACK TO THIS?????? MIGHT NEED PARTIAL TYDEPENDING ON IF NONE REF*) 
+
+        in
+          T.RECORD(tyfs, ref ())
+        end
 
   in
     trTy e
   end
- (* let 
-    (*fun trty (A.ArrayTy (symbol, pos)) = T.ARRAY(
-      case of Symbol.look(tenv, symbol),
-      T.unique)*)
-
-  in 
-  trty e
-  end*)
   (*(ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)*)
 
   fun transProg e = transExp Env.base_venv Env.base_tenv e
