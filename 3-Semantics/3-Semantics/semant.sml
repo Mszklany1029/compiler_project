@@ -18,13 +18,29 @@ struct
          ^ t1*))(*; T.BOTTOM*))
 
   fun aux_checkTypes (pos : A.pos) ([] : T.ty list) ([] : T.ty list) : unit = ()
-    | aux_checkTypes pos (arg :: args) (formal :: formals) = (checkTypes pos (arg, formal); aux_checkTypes pos args formals)
-    
+    | aux_checkTypes pos (arg :: args) (formal :: formals) = (checkTypes pos (arg, formal); aux_checkTypes pos args formals) 
+
 
   fun checkInt (pos : A.pos) (ty : T.ty) =
     case ty
         of T.INT => ()
           | _ => ErrorMsg.error pos "TYPE: Expected Int, got other type";
+
+  fun checkStr (pos : A.pos) (ty : T.ty) = 
+    case ty
+      of T.STRING => ()
+       | _ => ErrorMsg.error pos "TYPE: Expected String, got other type";
+
+  fun checkCompArgs (pos : A.pos) ((t1, t2) : T.ty * T.ty) : unit =
+    case (t1, t2)
+      of (T.STRING, T.STRING) => ()
+       | (T.INT, T.INT) => ()
+       | _ => (ErrorMsg.error pos "TYPE: Incompatible type comparison")
+
+ 
+
+  
+  (*fun getName(pos : A.pos) (symb : Symbol.symbol) (tenv)*)
   
   fun lookupTy (pos : A.pos) (ty_sym : A.symbol) (tenv : tenv) : T.ty =
       case Symbol.look (tenv, ty_sym) of SOME (T.NAME (_, r)) =>
@@ -58,17 +74,13 @@ struct
           (checkInt pos (trexp left);
            checkInt pos (trexp right); T.INT)
         | trexp (A.OpExp { left, oper = A.LtOp, right, pos} : A.exp) : T.ty =
-          (checkInt pos (trexp left);
-           checkInt pos (trexp right); T.INT)
+          (checkCompArgs pos (trexp left, trexp right); T.INT)
         | trexp (A.OpExp { left, oper = A.GtOp, right, pos} : A.exp) : T.ty =
-          (checkInt pos (trexp left);
-           checkInt pos (trexp right); T.INT)
+          (checkCompArgs pos (trexp left, trexp right); T.INT) 
         | trexp (A.OpExp { left, oper = A.LeOp, right, pos} : A.exp) : T.ty =
-          (checkInt pos (trexp left);
-           checkInt pos (trexp right); T.INT)
+          (checkCompArgs pos (trexp left, trexp right); T.INT)
         | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp) : T.ty =
-          (checkInt pos (trexp left);
-           checkInt pos (trexp right); T.INT)
+          (checkCompArgs pos (trexp left, trexp right); T.INT)
         | trexp(A.IfExp {test, then', else' = NONE, pos} : A.exp) : T.ty =
           (checkInt pos (trexp test); T.UNIT)
         | trexp(A.IfExp {test, then', else' = SOME(exp3), pos} : A.exp) : T.ty =
@@ -82,7 +94,12 @@ struct
         | trexp (A.StringExp _) = T.STRING
         (* TODO: Handle multiple declarations*)
         | trexp (A.LetExp {decs = [dec], body, pos}) =
-            let val {venv=venv2, tenv=tenv2} = transDec venv tenv dec
+            let val {venv=venv2, tenv=tenv2} =
+              (*case decs of [] => T.UNIT
+                 | dec => transDec venv tenv dec
+                 | dec :: decs => (transDec venv tenv dec; trexp (A.LetExp{decs,
+                 body, pos}))*)
+            transDec venv tenv dec
             in transExp venv2 tenv2 body end
           (* TODO: Handle SeqExps with more than one expression - DONE I THINK? *)
         | trexp (A.SeqExp e) = 
@@ -171,9 +188,21 @@ struct
     | trdec(A.TypeDec (ts )) = 
     let 
       val prelim_tenv = List.foldl(fn ({name,...}, tv') => Symbol.enter(tv',name, T.NAME (name, ref NONE)) ) tenv ts
-      val prelim_tenv2 = List.foldl(fn ({name, ty, pos}, tv') => Symbol.enter(tv', name, lookupTy pos name prelim_tenv) )tenv ts
-    in 
-        {venv = venv, tenv = prelim_tenv2}
+      val tenv = List.foldl(fn ({name, ty, pos}, tv')=>Symbol.enter(tv', name, transTy prelim_tenv ty) )tenv ts
+
+      (*COME BACK AND ADD SEEN LIST STUFF*)
+      fun dig (name : Symbol.symbol ) (tenv : tenv) (pos : A.pos) : T.ty =
+        case Symbol.look(tenv, name) of SOME (T.NAME (_, tyop)) =>
+          case !tyop of SOME (T.NAME(symb,_)) => dig symb tenv pos
+           | SOME ty => ty
+           | NONE => (ErrorMsg.error pos "TYPE: NO TYPE FOUND BY DIG, COME BACK AND CHANGE THIS"; T.BOTTOM)
+      fun tenv_update (tenv : tenv) =  List.map (fn ({name, ty, pos}) => 
+        case Symbol.look(prelim_tenv, name) of SOME (T.NAME(name, r)) => r :=
+          SOME (dig name tenv pos)) ts
+
+    in
+        tenv_update tenv;
+        {venv = venv, tenv = tenv}
     end
     in
     trdec d

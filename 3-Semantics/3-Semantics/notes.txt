@@ -37,5 +37,8 @@ semant.sml:
  	- Takes in e which is A.ty, returns a T.ty
 
 
+DIG FUNCTION: 
+recursive function, walk through the tenv, need to check left and right hand to make sure there is no
+interuption
 
 MUTUAL RECURSION COME BACK WHEN READY:
