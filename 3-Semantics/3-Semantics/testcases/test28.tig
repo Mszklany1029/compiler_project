@@ -1,11 +1,14 @@
 /*| TYPE |*/
 /* error : different record types */
+/*modified: added rec3 stuff*/
 
 let
 	type rectype1 = {name:string , id:int}
 	type rectype2 = {name:string , id:int}
 
+	var rec3: rectype2 := rectype2 {name = 3, id = "hi"}
 	var rec1: rectype1 := rectype2 {name="Name", id=0}
 in
+	rec3;
 	rec1
 end

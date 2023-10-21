@@ -7,7 +7,7 @@ sig
     - a variable, with an associated type
     - a function, with an associated list of arguments (formals) and a
       result/return type. *)
-   datatype enventry = VarEntry of { ty : ty }
+   datatype enventry = VarEntry of { ty : ty, readonly : bool }
                      | FunEntry of { formals : ty list, result : ty }
  
     (* builtin types *)
