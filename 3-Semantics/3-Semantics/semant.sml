@@ -62,6 +62,7 @@ struct
          | (T.UNIT, T.UNIT) => ()
          | (T.BOTTOM, _) => ()                        (*DO WE NEED T.BOTTOM EVERYTIME WE CALL ERROR??*)
          | (T.RECORD (_, _), T.NIL) => ()
+         | (T.NIL, T.NIL) => ()
          | (T.NIL, T.RECORD (_, _)) => ()
          | (T.RECORD (_, u1), T.RECORD (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("TYPE: record type mismatch"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^ u1*))(*; T.BOTTOM*))
          | (T.ARRAY (_, u1), T.ARRAY (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("TYPE: array type mismatch"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^ u1*))(*; T.BOTTOM*))    (*THERE MIGHT BE MORE TYPE COMPARISONS TO ADD*)
@@ -86,7 +87,7 @@ struct
     case (t1, t2)
       of (T.STRING, T.STRING) => ()
        | (T.INT, T.INT) => ()
-       | _ => (ErrorMsg.error pos "TYPE: Incompatible type comparison")
+       | _ => (ErrorMsg.error pos "TYPE: Comps Incompatible type comparison")
 
   fun checkEqArgs (pos : A.pos) ((t1, t2): T.ty * T.ty) : unit = 
     case (t1, t2)
@@ -96,7 +97,9 @@ struct
        | (T.RECORD (_, u1), T.RECORD (_, u2)) => () (*SAME QUESTION AS WITHARRAYS*)
        | (T.RECORD (_,_), T.NIL) => ()
        | (T.NIL, T.RECORD(_,_)) => ()
-       | _ => ErrorMsg.error pos "TYPE: Incompatible type comparison" (*IMPROVE
+       | (T.NIL, T.NIL) => ()
+       | _ => ErrorMsg.error pos "TYPE: Eqs Incompatible type comparison, t1: "
+       (*^ (typeToStr t1) ^ ", t2:" ^ (typeToStr t2); () *) (*IMPROVE
        ERROR MESSAGE:?*)
 
   
@@ -108,45 +111,106 @@ struct
        | (T.NIL, _) => false
        | (_, _) => true
 
-
-    (*CASES FOR OTHER TYPES*)
-  fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
-    let
-      fun detectCycle ([] : T.ty list) (ty : T.ty) (pos : A.pos) = (ty :: [])
-        | detectCycle (t :: tys) (ty) (pos) = 
-          if List.exists (fn ty => ty = t ) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); tys) else ty :: tys
-            
-        
-    in
+(*fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
       (case t
         of T.NAME(symb, tyop) =>
           (case !tyop 
             of SOME ty => ( if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else dig ty tenv pos (t :: tys))
               | NONE =>
                   (case Symbol.look(tenv, symb)
-                    of SOME s => (tyop := SOME s; if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else dig s tenv pos (t :: tys))
-                      | NONE => t
+                    of SOME s => (if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else 
+                      let 
+                        val t = (dig s tenv pos (t :: tys))
+                      in 
+                        tyop := SOME t;
+                        t
+                      end)
+                    | NONE => t (*tyop := SOME t;*) 
                   )
             )
-          (*| T.ARRAY(otherty, u) => T.ARRAY(otherty, u)*)
+         (* | T.ARRAY(otherty, u) => T.ARRAY(otherty, u)*)
           | _ => t
+      )*)
+ 
+
+    (*CASES FOR OTHER TYPES*)
+  fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
+  let 
+    val start = (print "starting type : ")
+    val st = print (typeToStr t)
+    val strt = print "\n"
+  in 
+      (case t
+        of T.NAME(symb, tyop) =>
+          (case !tyop 
+            of SOME ty => ( if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else 
+              let 
+                val test = dig ty tenv pos (t :: tys)
+                val pre = print "outer level: " 
+                val pri = print (Symbol.name symb)
+                val prin = print " "
+                val tnt = print (typeToStr test)
+                val pls = print "\n"
+              in 
+                tyop := SOME test; test
+              end)
+              | NONE =>
+                  (case Symbol.look(tenv, symb)
+                    of SOME s => (if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else 
+                      let 
+                        val t = (dig s tenv pos (t :: tys))
+                        val p = print "inner SOME level: " 
+                        val pr =  print (Symbol.name symb) 
+                        val pri = print " " 
+                        val prin = print (typeToStr t)
+                        val pls = print "\n"
+                      in 
+                        tyop := SOME t;
+                        t
+                      end)
+                    | NONE => 
+                        let
+                          val p = print "Inner NONE level: "
+                          val pr = print (Symbol.name symb)  
+                          val pri = print " " 
+                          val prin = print (typeToStr t) 
+                          val pls = print "\n"
+                        in
+                          t
+                        end(*tyop := SOME t;*) 
+                  )
+            )
+         (* | T.ARRAY(otherty, u) => T.ARRAY(otherty, u)*)
+          | _ => let
+
+                val pre = print "Final case: " 
+                val tnt = print (typeToStr t)
+                val pls = print "\n"
+
+                 in
+                   t
+                 end
       )
-    end
+  end
  
  
   fun lookupTy (pos : A.pos) (ty_sym : A.symbol) (tenv : tenv) : T.ty =
       case Symbol.look (tenv, ty_sym) of SOME (T.NAME (_, r)) =>
               (case !r
                 of SOME ty => ty
-                  | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM))
+                  | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type inner" ^ Symbol.name ty_sym); T.BOTTOM))
+         (*| SOME (T.RECORD (fs, r)) => ()*)
          | SOME ty => ty
          | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM)
+
 
   fun transVar (venv : venv) (tenv : tenv) (v : A.var) : T.ty =
     let
       fun trVar (A.SimpleVar (symbol, pos)) = 
         (case Symbol.look(venv, symbol)
           of SOME (Env.VarEntry {ty, readonly = false}) => dig ty tenv pos [] (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
+           | SOME (Env.VarEntry {ty, readonly = true}) => (ErrorMsg.error pos
+           "READONLY: illegal attempt to modify readonly variable"; T.BOTTOM)
            | SOME (Env.FunEntry { formals, result}) => result
            | NONE => (ErrorMsg.error pos "SCOPE: no variable found"; T.BOTTOM))
        | trVar(A.FieldVar(var, symbol, pos)) = 
@@ -209,7 +273,8 @@ struct
           (checkCompArgs pos (trexp left, trexp right); T.INT)
         | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp) : T.ty =
           (checkCompArgs pos (trexp left, trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp) : T.ty = 
+        | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp) : T.ty =
+          
           (checkEqArgs pos (trexp left, trexp right); T.INT)
         | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp) : T.ty = 
           (checkEqArgs pos (trexp left, trexp right); T.INT) 
@@ -292,7 +357,7 @@ struct
             val arrSize = trexp size
             val initVal = trexp init
           in
-            (checkInt pos arrSize;
+            (convertFormatPrint tenv; checkInt pos arrSize;
             case Symbol.look(tenv, typ) of
                  SOME (T.ARRAY(t, u)) => (checkTypes pos (t, initVal); (*diginitVal tenv pos []*)T.ARRAY(t, u))
                | _ => (ErrorMsg.error pos ("TYPE: Not of arrtyp: " ^ Symbol.name typ); T.BOTTOM))
@@ -316,14 +381,19 @@ struct
               fun getTypes (recfield ) = 
                 let
                   (*val (symb, rexp, rpos) = recfield*)
-                  val (rpos, rexp, rsymb) = recfield (*THIS MAY CAUSE PROBLEMS
+                  (*val (rpos, rexp, rsymb) = recfield*) (*THIS MAY CAUSE PROBLEMS
                   COME BACK*)
+                    (*val test = print (Symbol.name rsymb)*)
+                  val (rsymb, rtyp) = recfield
+
                 in 
-                  lookupTy rsymb rpos tenv 
+                  (*lookupTy pos rsymb tenv*)
+                  rtyp
                 end 
                 
               val fieldargs = (map typArgsEval fields)
-              val namestypes = (map getTypes fields)
+              val namestypes = (map getTypes recfields)
+              (*val namestypes = (map getTypes fields)*)
 
               val test = convertFormatPrint tenv
             in 
@@ -359,21 +429,42 @@ struct
               val arg_entry = map (fn {name, typ, pos, ...} =>
                                               (name, Env.VarEntry { ty = lookupTy pos typ tenv, readonly = false}) )
                               params
-
+              val check = convertFormatPrint tenv
               val res = case result
                           of SOME (r, p) => lookupTy p r tenv
+                           | NONE => T.UNIT
+
+              (*check for dupes here?*)
+              (*val dupe_check = *) 
 
           in
           ((name, Env.FunEntry { formals = map fieldType params, result = res}), body, arg_entry, pos)
           end
+      
+      (*fun funDupeCheck()*)
 
       fun trdec (A.FunctionDec (fs : A.fundec list)) =
         let
           (* Collecting information *)
           val fes = map getFunEntry fs
+          (*val try = print fes*)
 
           (* Putting FunEntries in venv *)
           val fun_entries = map (fn (x, _, _, _) => x) fes
+          fun extract_name (x : (Symbol.symbol * 'a)) : Symbol.symbol = 
+            case x of
+                 (symb, _) => symb
+
+          (*val fun_symbs = map extract fun_entries*)
+
+          
+          fun checkFunDupes ([], _) = ()
+            | checkFunDupes ({name, pos, params, result, body} :: fundecs, names) =
+              (case List.find (fn n => name = n) names of
+                    SOME(_) => (ErrorMsg.error pos ("DUPLICATE: duplicate function definitions in same batch"); ())
+                      | NONE => (checkFunDupes (fundecs, name :: names));())
+
+
 
           fun insert (v : 'a Symbol.table) (xs : (Symbol.symbol * 'a) list) =
             List.foldl (fn ((n, x), v') => Symbol.enter(v', n, x) ) v xs
@@ -393,20 +484,24 @@ struct
             in
               (
               (* TODO: don't use equality to compare types FIX THISSSSSS *)
-              if result = ty_body then () else ErrorMsg.error pos "TYPE: unexpected result type")
+              if (checkTypes pos (result, ty_body)) = ()(*result = ty_body*) then () else ErrorMsg.error pos "TYPE: unexpected result type")
             end
 
           fun checkAllFunEntry ([] : ((Symbol.symbol * Env.enventry) * A.exp * (Symbol.symbol * Env.enventry) list * A.pos) list) = ()
             | checkAllFunEntry (((_, fe), b, ars, pos) :: xs) = (checkFunEntry fe ars b pos; checkAllFunEntry xs)
         in
-        (checkAllFunEntry fes; {venv = new_venv, tenv = tenv})
+          (checkFunDupes(fs, []);
+        checkAllFunEntry fes; {venv = new_venv, tenv = tenv})
         end
       
     | trdec(A.TypeDec (ts )) = 
     let 
       val prelim_tenv = List.foldl(fn ({name,...}, tv') => Symbol.enter(tv',name, T.NAME (name, ref NONE)) ) tenv ts
+      val temp = print "prelim: "
+      val temp = convertFormatPrint prelim_tenv
       val tenv = List.foldl(fn ({name, ty, pos}, tv')=>Symbol.enter(tv', name, transTy prelim_tenv ty) )tenv ts
-
+      val temp = print "stage 2: "
+      val temp = convertFormatPrint tenv
       (*COME BACK AND ADD SEEN LIST STUFF*)
       (*fun dig (name : Symbol.symbol ) (tenv : tenv) (pos : A.pos) : T.ty =
         case Symbol.look(tenv, name) of SOME (T.NAME (_, tyop)) =>
@@ -423,6 +518,8 @@ struct
 
     in
         tenv_update tenv;
+        print "stage 3: ";
+        convertFormatPrint tenv; 
         {venv = venv, tenv = tenv}
     end
     | trdec (A.VarDec ({name, escape, typ, init, pos})) =
