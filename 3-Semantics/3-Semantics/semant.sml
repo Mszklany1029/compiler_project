@@ -76,6 +76,7 @@ struct
   fun checkInt (pos : A.pos) (ty : T.ty) =
     case ty
         of T.INT => ()
+          | T.BOTTOM => ()
           | _ => ErrorMsg.error pos "TYPE: Expected Int, got other type"
 
   fun checkStr (pos : A.pos) (ty : T.ty) = 
@@ -394,7 +395,7 @@ struct
               val fieldargs = (map typArgsEval fields)
               val namestypes = (map getTypes recfields)
               (*val namestypes = (map getTypes fields)*)
-
+              val nstys = List.rev namestypes
               val test = convertFormatPrint tenv
             in 
              
@@ -402,7 +403,8 @@ struct
                 (ErrorMsg.error pos "SCOPE: fields unitialized"; T.BOTTOM) else
                   T.UNIT;
               
-              aux_checkTypes pos fieldargs namestypes;
+              (*aux_checkTypes pos namestypes fieldargs;*)
+              aux_checkTypes pos fieldargs nstys;
               convertFormatPrint tenv;
               rectyp
 
@@ -496,6 +498,12 @@ struct
       
     | trdec(A.TypeDec (ts )) = 
     let 
+      fun typeDupes ([], _) = ()
+        | typeDupes ({symbol, _, pos} :: ts, typeNames) = 
+          case List.exists (fn symbol => symbol = tyname) typeNames of
+               SOME(_) => (ErrorMsg.error pos ("DUPLICATE: duplicate type definitions in same batch"))
+             | NONE => (typeDupes ts, tyname :: typeNames)
+
       val prelim_tenv = List.foldl(fn ({name,...}, tv') => Symbol.enter(tv',name, T.NAME (name, ref NONE)) ) tenv ts
       val temp = print "prelim: "
       val temp = convertFormatPrint prelim_tenv
@@ -517,6 +525,7 @@ struct
         SOME(dig (valOf (Symbol.look(tenv, name))) tenv pos [] )) ts
 
     in
+        typeDupes (ts, _);
         tenv_update tenv;
         print "stage 3: ";
         convertFormatPrint tenv; 
@@ -574,7 +583,7 @@ struct
           fun processRecFields ({name, escape, typ, pos}, tyfs) = 
               (case (Symbol.look(tenv, typ)) of 
                    SOME (field) => (name, field) :: tyfs
-                  | NONE => (ErrorMsg.error pos "TYPE: undefined type"; (name, T.BOTTOM) :: tyfs))
+                  | NONE => (ErrorMsg.error pos "SCOPE: undefined type"; (name, T.BOTTOM) :: tyfs))
 
           val tfs = foldl processRecFields [] tyfields
 
