@@ -1,6 +1,0 @@
-let
-function nfactor(n: int) =
-	n = 10
-in
-	nfactor(10)
-end

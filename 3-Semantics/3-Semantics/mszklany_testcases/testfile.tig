@@ -1,3 +1,5 @@
+/*| TYPE |*/
+/* error: mismatched formals and function arguments*/
 let
         function f(y : int, z : string) : int = 9
         type a = b

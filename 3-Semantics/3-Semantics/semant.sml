@@ -25,7 +25,6 @@ struct
             case STRING of
                  T.STRING => "string"*)
 
-
   fun typeToStr (t : T.ty) : string = 
     case t of T.INT => "int"
        | T.STRING => "string"
@@ -54,10 +53,17 @@ struct
         print convert;
         print "\n"
       end *)
- 
+  fun actual_ty (tenv : tenv) (ty : T.ty) : T.ty = 
+    (case ty of 
+        T.NAME (symb, tyop) => 
+          (case Symbol.look (tenv, symb) of SOME typ => actual_ty tenv typ
+            | NONE => T.BOTTOM)
+            | ty => (print "ACTUAL_TY HERE: "; print (typeToStr ty); ty))
 
-  fun checkTypes (pos : A.pos) ((t1, t2) : T.ty * T.ty) : unit = 
-      case (t1, t2) of (T.INT, T.INT) => ()
+
+
+  fun checkTypes (tenv : tenv) (pos : A.pos) ((t1, t2) : T.ty * T.ty) : unit = 
+      case (actual_ty tenv t1, actual_ty tenv t2) of (T.INT, T.INT) => ()
          | (T.STRING, T.STRING) => ()
          | (T.UNIT, T.UNIT) => ()
          | (T.BOTTOM, _) => ()                        (*DO WE NEED T.BOTTOM EVERYTIME WE CALL ERROR??*)
@@ -65,13 +71,28 @@ struct
          | (T.NIL, T.NIL) => ()
          | (T.NIL, T.RECORD (_, _)) => ()
          | (T.RECORD (_, u1), T.RECORD (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("TYPE: record type mismatch"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^ u1*))(*; T.BOTTOM*))
-         | (T.ARRAY (_, u1), T.ARRAY (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("TYPE: array type mismatch"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^ u1*))(*; T.BOTTOM*))    (*THERE MIGHT BE MORE TYPE COMPARISONS TO ADD*)
+         | (T.ARRAY (_, u1), T.ARRAY (_, u2)) => if u1 = u2 then () else (ErrorMsg.error pos ("TYPE: array type mismatch"(*"FUNCTION ARGS: Expected " ^ u2 ^ ", given " ^ u1*))(*; T.BOTTOM*))
+         (*| (_, T.NAME (symb, tyop)) => 
+             (case !tyop 
+              of SOME ty => checkTypes pos tenv (_, ty)
+                 | NONE => tyop := SOME ((dig (valOf Symbol.look(tenv, symb))
+                 tenv pos [] ); checkTypes pos tenv (_, tyop)))*) 
          | _ => (ErrorMsg.error pos ("TYPE: Mismatch, t1: " ^ typeToStr(t1) ^ " t2: " ^ typeToStr(t2)(*"FUNCTION ARGS: Expected " ^ t2 ^ ", given"
          ^ t1*))(*; T.BOTTOM*))
 
-  fun aux_checkTypes (pos : A.pos) ([] : T.ty list) ([] : T.ty list) : unit = ()
-    | aux_checkTypes pos (arg :: args) (formal :: formals) = (checkTypes pos (arg, formal); aux_checkTypes pos args formals) 
+  fun aux_checkTypes (tenv : tenv) (pos : A.pos) ([] : T.ty list) ([] : T.ty list) : unit = ()
+    | aux_checkTypes tenv pos (arg :: args) (formal :: formals) = (checkTypes tenv pos (arg, formal); aux_checkTypes tenv pos args formals) 
 
+
+  (*fun actual_ty (tenv : tenv) (ty : T.ty) : T.ty = 
+    (case ty of 
+         T.NAME (symb, tyop) => 
+          (case !tyop of SOME t => 
+            (case Symbol.look (tenv, symb) of SOME typ => (print "ACTTY DEEP: ";
+            print (typeToStr typ); actual_ty tenv typ))
+         (*| T.RECORD(_,_) => ty
+         | T.ARRAY(_,_) => ty*)
+         | _ => (print "ACTUAL_TY HERE: "; print (typeToStr ty); ty)))*) 
 
   fun checkInt (pos : A.pos) (ty : T.ty) =
     case ty
@@ -103,16 +124,22 @@ struct
        (*^ (typeToStr t1) ^ ", t2:" ^ (typeToStr t2); () *) (*IMPROVE
        ERROR MESSAGE:?*)
 
+  fun nilInitRule ((t1, t2) : T.ty * T.ty) : bool = 
+    case (t1, t2) 
+      of (T.NIL, T.NIL) => true
+       | (_, T.NIL) => false
+       | (T.NIL, _) => false
+       | (_, _) => false
   
   fun checkNil (pos : A.pos) ((t1, t2) : T.ty * T.ty) : bool = 
     case (t1, t2)
-      of (T.NIL, T.NIL) => true
-       | (T.RECORD (_, _), T.NIL) => true
+      of (T.NIL, T.NIL) => (print "BOTH NIL"; true)
+       | (T.RECORD (_, _), T.NIL) => (print "hHI"; true)
        | (_, T.NIL) => false
        | (T.NIL, _) => false
-       | (_, _) => true
+       | (_, _) => (print "BOTTOM"; true) 
 
-(*fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
+fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
       (case t
         of T.NAME(symb, tyop) =>
           (case !tyop 
@@ -131,14 +158,14 @@ struct
             )
          (* | T.ARRAY(otherty, u) => T.ARRAY(otherty, u)*)
           | _ => t
-      )*)
+      )
  
 
     (*CASES FOR OTHER TYPES*)
-  fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
+(*fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
   let 
-    val start = (print "starting type : ")
-    val st = print (typeToStr t)
+    (*val start = (print "starting type : ")
+    val st = print (typeToStr t)*)
     val strt = print "\n"
   in 
       (case t
@@ -147,10 +174,10 @@ struct
             of SOME ty => ( if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else 
               let 
                 val test = dig ty tenv pos (t :: tys)
-                val pre = print "outer level: " 
+                (*val pre = print "outer level: " 
                 val pri = print (Symbol.name symb)
                 val prin = print " "
-                val tnt = print (typeToStr test)
+                val tnt = print (typeToStr test)*)
                 val pls = print "\n"
               in 
                 tyop := SOME test; test
@@ -160,10 +187,10 @@ struct
                     of SOME s => (if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else 
                       let 
                         val t = (dig s tenv pos (t :: tys))
-                        val p = print "inner SOME level: " 
+                        (*val p = print "inner SOME level: " 
                         val pr =  print (Symbol.name symb) 
                         val pri = print " " 
-                        val prin = print (typeToStr t)
+                        val prin = print (typeToStr t)*)
                         val pls = print "\n"
                       in 
                         tyop := SOME t;
@@ -171,10 +198,10 @@ struct
                       end)
                     | NONE => 
                         let
-                          val p = print "Inner NONE level: "
+                          (*val p = print "Inner NONE level: "
                           val pr = print (Symbol.name symb)  
                           val pri = print " " 
-                          val prin = print (typeToStr t) 
+                          val prin = print (typeToStr t)*) 
                           val pls = print "\n"
                         in
                           t
@@ -191,8 +218,8 @@ struct
                  in
                    t
                  end
-      )
-  end
+      ) 
+  end *)
  
  
   fun lookupTy (pos : A.pos) (ty_sym : A.symbol) (tenv : tenv) : T.ty =
@@ -295,7 +322,7 @@ struct
             val elsety = (dig (trexp exp3) tenv pos []) 
           in 
             checkInt pos (trexp test);
-            checkTypes pos (thenty, elsety);
+            checkTypes tenv pos (thenty, elsety);
             thenty
           end
 
@@ -349,10 +376,10 @@ struct
             of SOME (Env.FunEntry {formals, result} ) => if(List.length (map
             trexp args) <> List.length formals) then (ErrorMsg.error pos
             "SCOPE: function has incorrect number of args"; T.BOTTOM) else
-              (aux_checkTypes pos (map trexp args) (formals); result) 
+              (aux_checkTypes tenv pos (map trexp args) (formals); result) 
              | _ => (ErrorMsg.error pos "SCOPE: function is out of scope"; T.BOTTOM))
         | trexp (A.AssignExp {var, exp, pos}) = 
-          (checkTypes pos (transVar venv tenv var, trexp exp); T.UNIT)
+          (checkTypes tenv pos (transVar venv tenv var, trexp exp); T.UNIT)
         | trexp (A.ArrayExp {typ, size, init, pos} ) =
           let
             val arrSize = trexp size
@@ -360,7 +387,7 @@ struct
           in
             (convertFormatPrint tenv; checkInt pos arrSize;
             case Symbol.look(tenv, typ) of
-                 SOME (T.ARRAY(t, u)) => (checkTypes pos (t, initVal); (*diginitVal tenv pos []*)T.ARRAY(t, u))
+                 SOME (T.ARRAY(t, u)) => (checkTypes tenv pos (t, initVal); (*diginitVal tenv pos []*)T.ARRAY(t, u))
                | _ => (ErrorMsg.error pos ("TYPE: Not of arrtyp: " ^ Symbol.name typ); T.BOTTOM))
           end
         | trexp (A.RecordExp{fields, typ, pos}) = 
@@ -404,7 +431,7 @@ struct
                   T.UNIT;
               
               (*aux_checkTypes pos namestypes fieldargs;*)
-              aux_checkTypes pos fieldargs nstys;
+              aux_checkTypes tenv pos fieldargs nstys;
               convertFormatPrint tenv;
               rectyp
 
@@ -486,7 +513,7 @@ struct
             in
               (
               (* TODO: don't use equality to compare types FIX THISSSSSS *)
-              if (checkTypes pos (result, ty_body)) = ()(*result = ty_body*) then () else ErrorMsg.error pos "TYPE: unexpected result type")
+              if (checkTypes tenv pos (result, ty_body)) = ()(*result = ty_body*) then () else ErrorMsg.error pos "TYPE: unexpected result type")
             end
 
           fun checkAllFunEntry ([] : ((Symbol.symbol * Env.enventry) * A.exp * (Symbol.symbol * Env.enventry) list * A.pos) list) = ()
@@ -499,10 +526,10 @@ struct
     | trdec(A.TypeDec (ts )) = 
     let 
       fun typeDupes ([], _) = ()
-        | typeDupes ({symbol, _, pos} :: ts, typeNames) = 
-          case List.exists (fn symbol => symbol = tyname) typeNames of
-               SOME(_) => (ErrorMsg.error pos ("DUPLICATE: duplicate type definitions in same batch"))
-             | NONE => (typeDupes ts, tyname :: typeNames)
+        | typeDupes ({name, ty, pos} :: ts, typeNames) = 
+          (case List.find (fn tyname => name = tyname) typeNames of
+               SOME(_) => (ErrorMsg.error pos ("DUPLICATE: duplicate type definitions in same batch"); ())
+             | NONE => (typeDupes (ts, name :: typeNames)); ())
 
       val prelim_tenv = List.foldl(fn ({name,...}, tv') => Symbol.enter(tv',name, T.NAME (name, ref NONE)) ) tenv ts
       val temp = print "prelim: "
@@ -525,7 +552,7 @@ struct
         SOME(dig (valOf (Symbol.look(tenv, name))) tenv pos [] )) ts
 
     in
-        typeDupes (ts, _);
+        typeDupes (ts, []);
         tenv_update tenv;
         print "stage 3: ";
         convertFormatPrint tenv; 
@@ -536,10 +563,24 @@ struct
      let
       val constraint_type = lookupTy pos symbol tenv
       val init_type = transExp venv tenv init
+       val temp = (Symbol.name symbol)
+       val prin = print "HERE \n"
+       val scheck = print temp
+       val sdf = print "\n"
+       val conprint = typeToStr constraint_type
+       val initprint = typeToStr init_type
+       val prim = print "CONS: "
+       val psnf = print conprint 
+       val safd = print " INIT: "
+       val asdfsdjf = print initprint 
+       val wer = print "\n"
+
+       val constraintTypePlease = actual_ty tenv constraint_type
+       val initTypeWork = actual_ty tenv init_type
      in
        if checkNil pos (constraint_type, init_type) 
-       then (checkTypes pos (constraint_type, init_type); {venv =
-       Symbol.enter(venv, name, Env.VarEntry{ty = init_type, readonly = false}), tenv = tenv}) 
+       then (checkTypes tenv pos (constraint_type, init_type); {venv =
+       Symbol.enter(venv, name, Env.VarEntry{ty = (actual_ty tenv init_type), readonly = false}), tenv = tenv}) 
        else (ErrorMsg.error pos "TYPE: Use of nil as initializing expression without record constraint"; {venv = Symbol.enter(venv, name, Env.VarEntry{ty = T.BOTTOM, readonly = false}), tenv = tenv})
      end
      
@@ -548,9 +589,11 @@ struct
          let
            val ty = transExp venv tenv init
          in
-           if checkNil pos (ty, T.NIL)
+           (print (typeToStr ty));
+           print "\n"; 
+           if nilInitRule (ty, T.NIL)
            then
-             ErrorMsg.error pos "TYPE: Use of nil initializing expression without record type"
+            (ErrorMsg.error pos ("TYPE: Use of nil initializing expression without record type"))
            else ();
             {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = (transExp venv tenv init), readonly = false}), tenv = tenv}
          end

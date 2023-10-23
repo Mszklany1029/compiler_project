@@ -1,0 +1,11 @@
+/* |TYPE SCOPE| */
+/*error(s): type of array unable to be found, mutually recursive definitions interrupted, unitialized fields*/
+
+let 
+    type sections = array of itemList
+    var catalog : itemlist := itemlist {id = 0, category = sections}
+    type itemlist = { id : int, category : arr}
+ 
+in
+    catalog
+end

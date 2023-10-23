@@ -1,0 +1,13 @@
+/* | LOOP SCOPE | */
+/* mutually recursive type decs, bookended by two different declarations of type a  */
+
+let
+	type a = array of int
+	type b = e
+	type c = d
+	type d = c
+	type e = b
+	type a = b
+in
+
+end

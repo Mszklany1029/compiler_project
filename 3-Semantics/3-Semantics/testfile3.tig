@@ -1,9 +1,0 @@
-let
-	type a = array of int
-	type b = a
-	type c = a
-	type d = c
-	type e = b
-in
-
-end
