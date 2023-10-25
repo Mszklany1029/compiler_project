@@ -1,0 +1,140 @@
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+Project 4: Frames
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+In this project, you will begin to determine the layout of function call frames,
+by allocating space for local variables.  Local variables may be stored in registers
+or on the stack.  They must be stored on the stack if (a) they escape or (b) there
+is insufficient availability of registers.  In this project, we will optimistically
+assume that variables must be deferred to the stack only for reason (a)- we will not
+have enough information to determine if variables must be pushed to the stack for reason (b)
+until a later project.
+
+That is:
+    (a) escaping variables must go in the stack frame (and not in registers).
+    (b) non-escaping variables must go in registers (and not in the stack frame).
+
+(1) You are being provided with the following files:
+    findescape.sml
+    frame.sig
+    x86frame.sml
+    temp.sig
+    temp.sml
+    translate.sig
+    translate.sml
+You will need to add these to your files from previous projects, and update your sources.cm accordingly.
+
+(2) Begin by examining findescape.sml.  Recall that every occurence of a variable in absyn.sml has an (escape : bool ref) field,
+which we initially set to `true`.  For example, in absyn, we have:
+
+        VarDec of {name: symbol,
+                    escape: bool ref,
+                    typ: (symbol * pos) option,
+                    init: exp,
+                    pos: pos}
+
+Implement a function `findEscape (prog : Absyn.exp) : unit` which set all the references to indicate whether each variable escapes.
+To do this, you will need to make use of the provided escEnv environment:
+
+    type depth = int
+    type escEnv = (depth * bool ref) Symbol.table
+
+The "depth" of a function declaration is the number of declaration blocks from the "root" of the program that must be passed through to reach
+that function declaration.  The provided traverseVar, traverseExp, and traverseDec functions will allow you to walk over the
+absyn data structures while tracking depth and an escEnv (in a similar way to what you did in the previous project- although I promise
+this file is both easier and shorter.)
+
+When you encounter a variable declaration, set its bool reference to false, and enter its depth and reference into the escEnv.
+Each time that variable is accessed, look it up in the escEnv to find its declared depth.
+If the declared depth is less than its accessed depth, it has escaped: set the reference to true. 
+
+(2) Examine temp.sig.  This function allows you to create unique temporary values and labels.
+Temporary values can be created with `newtemp`, and are used to denote register or temporary locations.
+Labels can be created with newlabel, and will be used to denote labeled positions in eventual assembly code.
+
+You can examine temp.sml if you are interested in the implementation, but this is not essential.
+
+(3) Examine frame.sig and x86frame.sml.
+
+frame.sig:
+
+    frame.sig abstracts the information in a function stack frame.
+    The `frame` type abstracts away the details of the contents of a frame.
+    The `access` type abstracts away the details of how individual values (formal argument, local variables,
+    or temporaries) are stored.
+
+    newFrame creates a new frame.  It takes a label name for a function.  It also takes a list of bools,
+    indicating whether each formal argument escapes.
+
+    allocLocal creates a new unique access for a local variable.  The boolean value indicates whether the local variable
+    escapes.
+
+x86frame.sml:
+    x86frame.sml is the start of an implementation of frame.sig.  An `access` is either a location in the frame,
+    or a register.  The `frame` type itself store the correspondng function label, a list of accesses for each formal,
+    and `frameOff : int ref`.  frameOff allows you to track what space in the frame has already been allocated to
+    store local variables.  Each local variable that will be stored on the frame should be given `wordSize` bytes
+    of non-overlapping space.
+
+    Variables that escape must be allocated space on the frame.  With non-escaping variables should aim to be stored
+    in a register.  Later on, the compiler might discover that this is not possible (there are not enough registers,
+    the variables values have to be moved to the stack to allow for a function call, etc.)  But for the moment,
+    optimistically assign non-escaping variables register accesses.
+
+    You will need to write `newFrame` (setting up a new frame), `allocLocal` (allocate either frame space or a register
+    for a new local variable), and name and formals (accessor/"get" functions for a frame.)
+
+(4) Examine translate.sig and translate.sml.
+
+Think of frame.sig and x86frame.sml as representations of a stack frames.  translate.sig and translate.sml wrap
+this representation, to deal with translating the absyn representation of a program into frames.
+
+The main complication introduced by translate is that of a "level".  Each function is given a new level value,
+and is aware of its parents level value.  Down the line, this will assist us in creating/dealing with static links.
+
+The `outermost` level is that containing (a) the entirety of the users tiger program and (b) the "library" functions
+from the language definition.
+
+Concrete `level` and `access` types are given in translate.sml.  Define the `newLevel`, `formals`, and `allocLocal`
+functions.  These are largely wrappers on the similar functions in `x86frame.sml`, that must additionally cope
+with handling the level.
+
+Later in the translation, we will require a static link to be passed as an argument.  This static link must
+be in the frame.  When creating a level in translate, add an extra escaping first argument in the call to
+Frame.newFrame to allow for the static link to be passed.
+
+(5) Augment the value environment to record storage information.  In particular, you should adjust enventry
+(in both env.sig and env.sml) so that:
+    - VarEntry has a field `access : Translate.access` to store access information for a variable
+    - FunEntry has fields `level : Translate.level` and `label : Temp.label`.  level records information
+    about the function frame and previous level, the label is a name/label for the eventual assembly translation of
+    the function.
+
+(6) After adding these fields, you will begin getting compilation errors from semant.sml-
+the records you create in this file no longer have all required fields.  Using the functions
+from translate, update semant.sml to fill in these record fields appropriately.
+
+Functions should be assigned labels using `newlabel`, not `namedlabel`.  While using `namedlabel`
+might seem appealing it will cause problems if there are two variables (in different scopes) with the same name.
+
+(7) The test script will looks for specific output related to how you handle your variable allocations
+and function levels.  The functions:
+    val printAccess : Symbol.symbol -> access -> unit
+    val printLevel : Symbol.symbol -> level -> unit
+from translate.sig will allow you to print this output.
+
+You should call:
+    - printLevel from the FunctionDec case of transDec
+    - printAccess from the VarDec case of transDec
+    - printAccess from the ForExp case of transExp    
+to show the space allocated for a function/variable.
+
+You should not call these functions at other points in your code, even if those points require a variable/function allocations
+(for example, DO NOT call printAccess in when allocating function parameters.)
+
+The provided test cases, in the testcases folder, have corresponding expected outputs in the out folder.
+
+(8) You will need to update the Main.comp function to call findEscape.  You can use Main.comp on the command line for
+testing individual files.
