@@ -24,8 +24,7 @@ struct
           VarEntry {STRING} => 
             case STRING of
                  T.STRING => "string"*)
-    
-  val break_check = ref 0 : int ref
+
   fun typeToStr (t : T.ty) : string = 
     case t of T.INT => "int"
        | T.STRING => "string"
@@ -128,7 +127,7 @@ struct
        | (T.RECORD (_, u1), T.RECORD (_, u2)) => () (*SAME QUESTION AS WITHARRAYS*)
        | (T.RECORD (_,_), T.NIL) => ()
        | (T.NIL, T.RECORD(_,_)) => ()
-       | (T.NIL, T.NIL) => ErrorMsg.error pos "TYPE: Illegal use of NIL"
+       | (T.NIL, T.NIL) => ()
        | _ => ErrorMsg.error pos "TYPE: Eqs Incompatible type comparison, t1: "
        (*^ (typeToStr t1) ^ ", t2:" ^ (typeToStr t2); () *) (*IMPROVE
        ERROR MESSAGE:?*)
@@ -253,19 +252,18 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
     let
       fun trVar (A.SimpleVar (symbol, pos)) = 
         (case Symbol.look(venv, symbol)
-          of SOME (Env.VarEntry {ty, readonly = _ }) => ty(*dig ty tenv pos []*) (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
+          of SOME (Env.VarEntry {ty, readonly = _ }) => dig ty tenv pos [] (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
            (*| SOME (Env.VarEntry {ty, readonly = true}) => (ErrorMsg.error pos "READONLY: illegal attempt to modify readonly variable"; T.BOTTOM)*)
            | SOME (Env.FunEntry { formals, result}) => result
-             | NONE => (convertFormatPrint tenv; ErrorMsg.error pos "SCOPE: no variable found"; T.BOTTOM))
+           | NONE => (ErrorMsg.error pos "SCOPE: no variable found"; T.BOTTOM))
        | trVar(A.FieldVar(var, symbol, pos)) = 
         let
           fun fieldLookup (r : T.ty) ([] : (Symbol.symbol * T.ty) list) (pos : A.pos) : T.ty  = 
             (ErrorMsg.error pos "SCOPE: Field not found in record instance"; T.BOTTOM)
             | fieldLookup (r) ((symb, ty) :: fs) (pos) = if (symbol = symb) then ty else (fieldLookup r fs pos)
-          val re = trVar var
  
         in 
-          (case (actual_ty tenv (dig re tenv pos []))
+          (case trVar var
             of (r as (T.RECORD (fs, _))) => (fieldLookup r fs pos)
               | _ => (ErrorMsg.error pos "SCOPE: Var is not a record"; T.BOTTOM))
           (*(case (lookupTy pos symbol tenv)
@@ -295,7 +293,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
        
       fun trexp (A.VarExp var (*(A.SimpleVar (s, pos))*)) =
         transVar venv tenv var
-        | trexp (A.BreakExp pos) = if !break_check = 0 then (ErrorMsg.error pos "MISPLACED: illegal use of break"; T.BOTTOM) else T.UNIT
         | trexp (A.IntExp _) = T.INT
         | trexp (A.StringExp _) = T.STRING (*TRANSLATE TO STRING?*)
         | trexp (A.NilExp) = T.NIL
@@ -347,35 +344,28 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
         | trexp (A.WhileExp {test, body, pos}: A.exp) : T.ty =
           let
             val testint = (checkInt pos (trexp test))
-            (*val bodyExp = (trexp body)*)
+            val bodyExp = (trexp body)
           in
-            break_check := !break_check + 1; convertFormatPrint tenv;
-            (case (trexp body) 
+            convertFormatPrint tenv;
+            (case bodyExp 
               of T.UNIT => T.UNIT
-                | _ => (ErrorMsg.error pos "TYPE: While expression returns non-unit"; T.BOTTOM));
-                break_check := !break_check -1;
-                T.UNIT
-                
+                | _ => (ErrorMsg.error pos "TYPE: While expression returns non-unit"; T.BOTTOM))
           end
         | trexp (A.ForExp {var, escape, lo, hi, body, pos}) = 
-        
           let
             val lores = (trexp lo)
             val hires = (trexp hi)
             val venv' = Symbol.enter(venv, var, Env.VarEntry{ty = T.INT, readonly = true})
-            (*val bodyexp = transExp venv' tenv body*)
+            val bodyexp = transExp venv' tenv body
             (*val bodyexp = (transExp venv tenv' (transVar venv tenv
             * Env.VarEntry{var}))*)
           in 
             (*(transExp venv tenv var);*)
             checkInt pos lores;
             checkInt pos hires;
-            break_check := !break_check + 1;
-            (case (transExp venv' tenv body) (*bodyexp*)
+            (case bodyexp
               of T.UNIT => T.UNIT
-                | _ => (ErrorMsg.error pos "TYPE: For expression returns non-unit"; T.BOTTOM));
-            break_check := !break_check - 1;
-            T.UNIT
+                | _ => (ErrorMsg.error pos "TYPE: For expression returns non-unit"; T.BOTTOM))
           end
           
 
@@ -423,8 +413,8 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             (case Symbol.look(tenv, typ) of
                  SOME(t) =>
                  (case actual_ty tenv t of
-                    T.ARRAY(at, u) => (checkTypes tenv pos (actual_ty tenv at, actual_ty tenv initVal); (*diinitVal tenv pos []*)T.ARRAY(at, u))
-                    | _ => (ErrorMsg.error pos ("TYPE: Not of arrtyp: " ^ Symbol.name typ); T.BOTTOM)))
+                    (T.ARRAY(at, u) => (checkTypes tenv pos (actual_ty tenv at, actual_ty tenv initVal); (*diinitVal tenv pos []*)T.ARRAY(at, u))
+                    | _ => (ErrorMsg.error pos ("TYPE: Not of arrtyp: " ^ Symbol.name typ); T.BOTTOM))))
           end
         | trexp (A.RecordExp{fields, typ, pos}) = 
             let
@@ -663,7 +653,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
       | trTy (A.RecordTy tyfields) = 
         let
           fun processRecFields ({name, escape, typ, pos}, tyfs) = 
-              (case (Symbol.look(tenv, typ)) of
+              (case (Symbol.look(tenv, typ)) of 
                    SOME (field) => (name, field) :: tyfs
                   | NONE => (ErrorMsg.error pos "SCOPE: undefined type"; (name, T.BOTTOM) :: tyfs))
 

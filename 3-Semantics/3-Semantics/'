@@ -1,0 +1,25 @@
+  1         /*|SCOPE|*/
+  2 /*Error: Attempt to access j outside of it's corresponding for loop*/
+  3 let
+  4     type alpha = array of string
+  5     
+  6     var arr1:alpha := alpha [8] of "alphabet" 
+  7     var temp := "s"
+  8     var temp2 := "j"
+  9 in
+ 10  arr1[1] := "joe";
+ 11  arr1[2] := "mother";
+ 12  arr1[3] := "toaster";
+ 13  arr1[4] := "sandwhich";
+ 14  arr1[5] := "sleep";
+ 15  arr1[6] := "canadian";
+ 16  arr1[7] := "dictionary";
+ 17 
+ 18  (for i := 0 to 8
+ 19     do
+ 20         arr[1] := "test";  
+ 29         )
+ 30            
+ 31 end
+~
+
