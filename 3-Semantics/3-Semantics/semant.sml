@@ -128,7 +128,7 @@ struct
        | (T.RECORD (_, u1), T.RECORD (_, u2)) => () (*SAME QUESTION AS WITHARRAYS*)
        | (T.RECORD (_,_), T.NIL) => ()
        | (T.NIL, T.RECORD(_,_)) => ()
-       | (T.NIL, T.NIL) => (*ErrorMsg.error pos "TYPE: Illegal use of NIL"*) ()
+       | (T.NIL, T.NIL) => ErrorMsg.error pos "TYPE: Illegal use of NIL"
        | _ => ErrorMsg.error pos "TYPE: Eqs Incompatible type comparison, t1: "
        (*^ (typeToStr t1) ^ ", t2:" ^ (typeToStr t2); () *) (*IMPROVE
        ERROR MESSAGE:?*)
@@ -603,7 +603,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
      in
        if checkNil pos (constraint_type, init_type) 
        then (checkTypes tenv pos (constraint_type, init_type); {venv =
-       Symbol.enter(venv, name, Env.VarEntry{ty = (actual_ty tenv init_type), readonly = false}), tenv = tenv}) 
+       Symbol.enter(venv, name, Env.VarEntry{ty = (constraint_type(*actual_ty tenv init_type*)), readonly = false}), tenv = tenv}) 
        else (ErrorMsg.error pos "TYPE: Use of nil as initializing expression without record constraint"; {venv = Symbol.enter(venv, name, Env.VarEntry{ty = T.BOTTOM, readonly = false}), tenv = tenv})
      end
      
