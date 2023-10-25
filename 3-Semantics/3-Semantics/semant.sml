@@ -128,7 +128,7 @@ struct
        | (T.RECORD (_, u1), T.RECORD (_, u2)) => () (*SAME QUESTION AS WITHARRAYS*)
        | (T.RECORD (_,_), T.NIL) => ()
        | (T.NIL, T.RECORD(_,_)) => ()
-       | (T.NIL, T.NIL) => ErrorMsg.error pos "TYPE: Illegal use of NIL"
+       | (T.NIL, T.NIL) => (*ErrorMsg.error pos "TYPE: Illegal use of NIL"*) ()
        | _ => ErrorMsg.error pos "TYPE: Eqs Incompatible type comparison, t1: "
        (*^ (typeToStr t1) ^ ", t2:" ^ (typeToStr t2); () *) (*IMPROVE
        ERROR MESSAGE:?*)
@@ -253,10 +253,9 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
     let
       fun trVar (A.SimpleVar (symbol, pos)) = 
         (case Symbol.look(venv, symbol)
-          of SOME (Env.VarEntry {ty, readonly = _ }) => ty(*dig ty tenv pos []*) (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
-           (*| SOME (Env.VarEntry {ty, readonly = true}) => (ErrorMsg.error pos "READONLY: illegal attempt to modify readonly variable"; T.BOTTOM)*)
+          of SOME (Env.VarEntry {ty, readonly = _ }) => (*ty*)dig ty tenv pos [] (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
            | SOME (Env.FunEntry { formals, result}) => result
-             | NONE => (convertFormatPrint tenv; ErrorMsg.error pos "SCOPE: no variable found"; T.BOTTOM))
+             | NONE => ((*convertFormatPrint tenv; print " "; print (Symbol.name symbol); print " \n";*) ErrorMsg.error pos "SCOPE: no variable found"; T.BOTTOM))
        | trVar(A.FieldVar(var, symbol, pos)) = 
         let
           fun fieldLookup (r : T.ty) ([] : (Symbol.symbol * T.ty) list) (pos : A.pos) : T.ty  = 
@@ -268,12 +267,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           (case (actual_ty tenv (dig re tenv pos []))
             of (r as (T.RECORD (fs, _))) => (fieldLookup r fs pos)
               | _ => (ErrorMsg.error pos "SCOPE: Var is not a record"; T.BOTTOM))
-          (*(case (lookupTy pos symbol tenv)
-            of rec as T.RECORD (fields, u)) => fieldLookup rec fields pos
-              | _ => (ErrorMsg.error pos "SCOPE: Var is not a record";
-              T.BOTTOM)*)
-          (*(case trVar var
-            of  (lookupTy pos symbol tenv) )*)
         end
       | trVar(A.SubscriptVar(var, exp, pos)) =
         let
@@ -288,7 +281,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
     in 
       trVar v
     end
-    (*(ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)*)
 
   and transExp (venv : venv) (tenv : tenv) (e : A.exp) : T.ty =
     let
@@ -297,7 +289,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
         transVar venv tenv var
         | trexp (A.BreakExp pos) = if !break_check = 0 then (ErrorMsg.error pos "MISPLACED: illegal use of break"; T.BOTTOM) else T.UNIT
         | trexp (A.IntExp _) = T.INT
-        | trexp (A.StringExp _) = T.STRING (*TRANSLATE TO STRING?*)
+        | trexp (A.StringExp _) = T.STRING
         | trexp (A.NilExp) = T.NIL
         | trexp (A.OpExp { left, oper=A.PlusOp, right, pos} : A.exp) : T.ty =
           (checkInt pos (trexp left);
@@ -320,7 +312,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
         | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp) : T.ty =
           (checkCompArgs pos (trexp left, trexp right); T.INT)
         | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp) : T.ty =
-          
           (checkEqArgs pos (trexp left, trexp right); T.INT)
         | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp) : T.ty = 
           (checkEqArgs pos (trexp left, trexp right); T.INT) 
@@ -347,7 +338,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
         | trexp (A.WhileExp {test, body, pos}: A.exp) : T.ty =
           let
             val testint = (checkInt pos (trexp test))
-            (*val bodyExp = (trexp body)*)
           in
             break_check := !break_check + 1; convertFormatPrint tenv;
             (case (trexp body) 
@@ -378,8 +368,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             T.UNIT
           end
           
-
-        (* TODO: Handle multiple declarations*)
         | trexp (A.LetExp {decs = decs, body, pos}) =
           (case decs
             of dec :: ds => (let
@@ -388,15 +376,12 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                               transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos})
                             end)
               | [] => (transExp venv tenv body))
-    (* TODO: Handle SeqExps with more than one expression - DONE I THINK? *)
         | trexp (A.SeqExp e) = 
           (case e
             of [] => T.UNIT
               | [(a, _)] => trexp a
               | (a, _) :: b => (trexp a; trexp (A.SeqExp b))) 
         | trexp (A.CallExp {func, args, pos}) =
-          (* TODO: this only checks if a function exists, also need to check
-          * arguments - DONE I THINK*)
           (case Symbol.look (venv, func)
             of SOME (Env.FunEntry {formals, result} ) => if(List.length (map
             trexp args) <> List.length formals) then (ErrorMsg.error pos
@@ -410,7 +395,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
 
         in
           checkReadOnly pos var venv;
-          checkTypes tenv pos (transVar venv tenv var, trexp exp); T.UNIT
+          checkTypes tenv pos (assign_var, trexp exp); T.UNIT
 
         end
 

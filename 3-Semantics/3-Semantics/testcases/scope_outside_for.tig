@@ -1,4 +1,4 @@
-		/*|SCOPE|*/
+/*|SCOPE|*/
 /*Error: Attempt to access j outside of it's corresponding for loop*/
 let
 	type alpha = array of string
