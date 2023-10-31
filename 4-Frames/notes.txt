@@ -1,0 +1,55 @@
+Textbook Notes: 
+	- A variable escapes if it is passed by reference, its address is taken (using C's & operator), or it is accessed from a nested function
+	- Static Link: Whenever a function f is called, it can be passed a pointer to the frame of the function statically enclosing f; this pointer is the static link
+
+ - 6.2: Frames in the Tiger Compiler:
+ 	- type frame holds info about formal parameters and local variables allocated in this frame
+	- Make a new frame for a function f with k formal parameters, call newFrame{name = f, formals = l}, where l is a list of k booleans: true for each parameter that escapes and false for each parameter that does not. 
+	- access type describes formals and locals that may be in the frame or in registers
+	- InFrame(x): indicates a mem location at offset x from the fp
+	- InReg(t_84): indicates that it will be held in "register" t_84
+	- Frame.formals interface function extracts list of k "accesses" denoting locations where formals will be kept at runtume, as seen from inside callee, params may be seen differently by caller and callee.
+	- For each formal param, newFrame must calculate two things:
+		* How parameter will be seen from inside the function (in a register, or in a frame location);
+		* What instructions must be produced to implement the "view shift"
+
+	- Representation of Frame Descriptions:
+		- Frame is data structure holding:
+			* location of all formals
+			* instructions required to implement the "view shift"
+			* number of locals allocated so far
+			* the label at whihc the functions machine code is to being (pg 140)
+		- 
+	- Local Variables: 
+		- to allocate new local variable in a frame f, semantic analysis phase calls Frame.allocLocal(f)(true)
+		- returns an InFrame access with an offest from the frame pointer
+	- Calculating Escapes:
+		- Local variables that do not escape can be allocated in a register
+		- A FindEscape function can look for escaping vars and record this info in the escape fields of the abstract syntax.
+		- must do before semantic analysis begins,. 
+		- COM EBACK?
+	- Temporaries and Labels:
+		- Use the word "temporary" to mean that a value is temporarily held in a register
+		- "label" to mean some machine-language locatin whose exact address is yet to determined - just like a lable in assembly language
+		- Temps are abstract names for local vars
+		- labels are abstract names for static mem addresses
+		- Temp.newtemp(): returns new temporary from inf set of temps
+		- Temp.newlabel(): returns new label from inf set of labels
+		- Temp.namedlabel(string): returns new label whose assembly-language name is string
+	- Two Layers of Abstraction: 
+		- FRAME and TEMP interfaces provide machine-independent views of memory-resident and register-resident variables
+		- Translate module augments this by handling the notion of nested scopes (via staic links)
+		- Essential to have an abstraction layer at FRAME, to separate the source language semantics from the machine-dependent frame layout. 
+	- Managing Static Links: 
+		- Frame module should be independent of the specific source language being compiled.
+		- Many source languages do not have nested function declarations; thus, Frame should not knowanything about static links. Instead this is the responsibility of Translate. 
+		- COME BACK
+	- Keeping Track of Levels:
+		- With every call to newLevel, Semant must pass the enclosing level value. 
+		- When creating the level for the "main" Tiger program (one not within any Tiger function), Semant should pass a special level value: Translate.outermost
+		- transDec will make a new level for each Tiger function declaration
+			- newLevel must be told the enclosing function's level
+			- transDec must know, while processing each declaration, the current static nesting level. 
+		- transDec will now get an additional argument (in addition to the type and val envs) that is the current level as given by the appropriate call to newLevel.
+		- transExp will need argument as well, allows transDec to pass a level to transExp, which passes it in turn to transDec to process declarations of nested functions.
+		- transVar also needs level argument
