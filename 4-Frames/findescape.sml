@@ -94,6 +94,7 @@ struct
           | travDec(A.VarDec ({name, escape, typ, init, pos})) = 
           let
             val escEntry = (d, escape)
+            (*COME BACK CALL TRAVERSE ON INIT*)
           in
             escape := false;
             Symbol.enter(env, name, escEntry)
