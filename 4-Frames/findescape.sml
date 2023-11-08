@@ -46,7 +46,7 @@ struct
           | travExp (A.WhileExp({test, body, pos})) = (travExp test; travExp body)
           | travExp (A.ForExp({var, escape, lo, hi, body, pos})) = 
             let
-              val escEntry = (d, escape) (*DOES THAT DEPTH NEED TO BE ZERO?*)
+              val escEntry = ((d+1), escape) (*DOES THAT DEPTH NEED TO BE ZERO?*)
             in 
               escape := false; 
               Symbol.enter(env, var, escEntry);
@@ -67,6 +67,7 @@ struct
               travExp body
             end
           | travExp (A.ArrayExp({typ, size, init, pos})) = (travExp size; travExp init)
+          | travExp e = 
       in 
         travExp e
       end 
@@ -80,9 +81,9 @@ struct
             fun processParams({params, body, ...} : A.fundec) = (app (fn {escape, ...}
               => escape := false) params;
               let
-                val env' = List.foldl (fn ({escape, name, ...}, env ) => Symbol.enter(env, name, (d, escape) )) env params
+                val env' = List.foldl (fn ({escape, name, ...}, env ) => Symbol.enter(env, name, ((d+1), escape) )) env params
               in 
-               traverseExp env' d body
+               traverseExp env' (d+1) body
               end)
 
           in

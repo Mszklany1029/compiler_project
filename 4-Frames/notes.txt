@@ -53,3 +53,13 @@ Textbook Notes:
 		- transDec will now get an additional argument (in addition to the type and val envs) that is the current level as given by the appropriate call to newLevel.
 		- transExp will need argument as well, allows transDec to pass a level to transExp, which passes it in turn to transDec to process declarations of nested functions.
 		- transVar also needs level argument
+
+
+
+
+TEST PHASE:
+test56:
+ - InReg:
+ 	a, c, r
+ - InFrame:
+ 	b, d, s

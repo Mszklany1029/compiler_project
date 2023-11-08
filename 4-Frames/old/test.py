@@ -29,19 +29,17 @@ def runFiles(folder, expected):
 
         # run the program
         res = subprocess.run(["sml", "@SMLload=./" + exe, folder + filename], timeout = 2, capture_output = True)
-        out = res.stdout.decode('utf-8').strip().splitlines()
-        out.sort()
+        out = res.stdout.decode('utf-8')
 
         expected_out_fn = "out/" + filename.replace(".tig", ".txt");
 
         if len(sys.argv) >= 2 and sys.argv[1] == "--out":
             with open(expected_out_fn, "w") as out_file:
-                out_file.write("\n".join(out));
+                out_file.write(out);
         else:
             with open(expected_out_fn, "r") as out_file:
-                correct = out_file.read().strip().splitlines();
-                correct.sort()
-                if correct != out:
+                correct = out_file.read();
+                if correct.strip() != out.strip():
                     incorrect = True
 
 

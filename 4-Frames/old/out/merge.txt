@@ -7,7 +7,7 @@ function readint (InFrame 0) InReg
 function readlist (InFrame 0)
 function skipto (InFrame 0)
 var any InReg
-var buffer (InFrame ~4)
+var buffer (InFrame 0)
 var i InReg
 var i InReg
 var list1 InReg

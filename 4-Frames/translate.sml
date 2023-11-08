@@ -10,18 +10,22 @@ struct
     * LEVELS*)
     fun newLevel ({parent : level, name : Temp.label, formals : bool list}) : level =
       let 
-        val new_frame = X86Frame.newFrame{name = name, formals = formals}
+        val new_frame = X86Frame.newFrame{name = name, formals = true :: formals}
       in
         Level({prev_level = parent, frame = new_frame})
-      end(*(ErrorMsg.error 0 "todo"; raise ErrorMsg.Error)*)
-    fun formals (l : level) : access list = 
-      let
-        val Level({prev_level, frame}) = l
-        val aList = X86Frame.formals frame
-        val accList = foldl (fn )
-      in
-        accList
       end
+    fun formals (Outermost : level) : access list = []
+      | formals (l : level) = 
+        let
+          val Level({prev_level, frame}) = l
+          val aList = X86Frame.formals frame
+          (*fun transAcc (lev : level) (old_acc : X86Frame.access) =
+            (lev, old_acc)*)
+          val accList = map (fn forms => (l, forms)) aList(*foldl transAcc [] (prev_level, aList)*) (*COME BACKKK*)
+          (*val accList = foldl (fn (prev_level, al') => (prev_level))*)
+        in
+          accList
+        end
       (*(ErrorMsg.error 0 "todo"; raise ErrorMsg.Error)*)
     fun allocLocal (l : level) (escape : bool) : access =
       let

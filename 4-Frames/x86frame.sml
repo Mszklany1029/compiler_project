@@ -11,24 +11,25 @@ struct
       in 
         name
       end
-      (*(ErrorMsg.error 0 "todo"; raise ErrorMsg.Error)*) 
     fun formals (f : frame) : access list = 
       let
         val {name, formals, frameOff} = f
       in
         formals
       end
-      (*(ErrorMsg.error 0 "todo"; raise
-      ErrorMsg.Error)*)
     fun allocLocal ({frameOff, ...} : frame) escape : access = (*FIND OUT IF THIS PARAMETER SYNTAX IS OKAY*)
       (case escape
-        of true => InFrame(!frameOff) (*NEED TO ADD FOUR TO FRAME OFF HERE???*)
+        of true => (frameOff := !frameOff - wordSize; InFrame(!frameOff + wordSize)) (*NEED TO ADD FOUR TO FRAME OFF HERE???*)
           | false => InReg(Temp.newtemp()))
-      (*(ErrorMsg.error 0 "todo"; raise
-      ErrorMsg.Error)*)
     fun allocFormals (formal_esc : bool) (*(frameAbove : int)*) : access = 
       (case formal_esc 
-         of true =>  (argOffset := 4 + !argOffset; InFrame(!argOffset)) (*ORDER
+         of true => 
+          let
+            (*val argOffset : int ref = ref 0*)
+          in
+            (argOffset := wordSize + !argOffset; InFrame(!argOffset - wordSize)) 
+          end
+          (*ORDER
          HERE MIGHT BE WRONG???*)
           | false =>  
               (*let
@@ -44,10 +45,10 @@ struct
         (*val f : frame = { name = Temp.newlabel(), formals = accList, frameOff
         * = 0}*)
       in
+        argOffset := 0;
         {name = Temp.newlabel(), (*EMAIL HALLAHAN NAME GETS NAME????*) formals =
-        accList, frameOff = ref 0}
+        accList, frameOff = ref (0 - wordSize)}
       end 
-      (*(ErrorMsg.error 0 "todo"; raise ErrorMsg.Error)*)
 
     fun printAccess (InFrame w) = ("(InFrame " ^ Int.toString w ^ ")")
       | printAccess (InReg _) = "InReg"

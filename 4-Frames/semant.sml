@@ -6,6 +6,7 @@ struct
   type venv = Env.enventry Symbol.table
   type tenv = T.ty Symbol.table
 
+type level = Translate.level
   (*fun printFormat (s : string) : unit = 
     print s ^ ", "*)
   (*fun convertFormatPrint (tenv : tenv) : unit =
@@ -152,8 +153,8 @@ struct
     (case v of
           A.SimpleVar(symb, _) => 
           (case Symbol.look(venv, symb) of 
-                SOME(Env.VarEntry{ty, readonly = true}) => (ErrorMsg.error pos "READONLY: illegal attempt to modify readonly variable")
-              | SOME(Env.VarEntry{ty, readonly = false}) => ())
+                SOME(Env.VarEntry{ty, readonly = true, ...}) => (ErrorMsg.error pos "READONLY: illegal attempt to modify readonly variable")
+              | SOME(Env.VarEntry{ty, readonly = false, ...}) => ())
         | _ => ())
 
 fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
@@ -249,12 +250,12 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
          | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM)
 
 
-  fun transVar (venv : venv) (tenv : tenv) (v : A.var) : T.ty =
+  fun transVar (venv : venv) (tenv : tenv) (v : A.var) (lvl : level): T.ty =
     let
       fun trVar (A.SimpleVar (symbol, pos)) = 
         (case Symbol.look(venv, symbol)
-          of SOME (Env.VarEntry {ty, readonly = _ }) => (*ty*)dig ty tenv pos [] (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
-           | SOME (Env.FunEntry { formals, result}) => result
+          of SOME (Env.VarEntry {ty, readonly = _, ... }) => (*ty*)dig ty tenv pos [] (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
+           | SOME (Env.FunEntry { formals, result, ...}) => result
              | NONE => ((*convertFormatPrint tenv; print " "; print (Symbol.name symbol); print " \n";*) ErrorMsg.error pos "SCOPE: no variable found"; T.BOTTOM))
        | trVar(A.FieldVar(var, symbol, pos)) = 
         let
@@ -273,7 +274,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           val t = trVar var
         in 
           (case (actual_ty tenv (dig t tenv pos [])) of
-                (T.ARRAY (ty, _)) => (checkInt pos (transExp venv tenv exp); ty) 
+                (T.ARRAY (ty, _)) => (checkInt pos (transExp venv tenv exp lvl); ty) 
                 | _ => (ErrorMsg.error pos "SCOPE: Var is not of Arraytype"; T.BOTTOM) (*don't know why it's scope and not type but okay*)
           )  
         end
@@ -282,11 +283,11 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
       trVar v
     end
 
-  and transExp (venv : venv) (tenv : tenv) (e : A.exp) : T.ty =
+  and transExp (venv : venv) (tenv : tenv) (e : A.exp) (lvl : level) : T.ty =
     let
        
       fun trexp (A.VarExp var (*(A.SimpleVar (s, pos))*)) =
-        transVar venv tenv var
+        transVar venv tenv var lvl
         | trexp (A.BreakExp pos) = if !break_check = 0 then (ErrorMsg.error pos "MISPLACED: illegal use of break"; T.BOTTOM) else T.UNIT
         | trexp (A.IntExp _) = T.INT
         | trexp (A.StringExp _) = T.STRING
@@ -352,16 +353,18 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           let
             val lores = (trexp lo)
             val hires = (trexp hi)
-            val venv' = Symbol.enter(venv, var, Env.VarEntry{ty = T.INT, readonly = true})
+            val acc = Translate.allocLocal lvl (!escape)
+            val venv' = Symbol.enter(venv, var, Env.VarEntry{ty = T.INT, readonly = true, access = acc})
             (*val bodyexp = transExp venv' tenv body*)
             (*val bodyexp = (transExp venv tenv' (transVar venv tenv
             * Env.VarEntry{var}))*)
           in 
             (*(transExp venv tenv var);*)
+            Translate.printAccess var acc;
             checkInt pos lores;
             checkInt pos hires;
             break_check := !break_check + 1;
-            (case (transExp venv' tenv body) (*bodyexp*)
+            (case (transExp venv' tenv body lvl) (*bodyexp*)
               of T.UNIT => T.UNIT
                 | _ => (ErrorMsg.error pos "TYPE: For expression returns non-unit"; T.BOTTOM));
             break_check := !break_check - 1;
@@ -371,11 +374,11 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
         | trexp (A.LetExp {decs = decs, body, pos}) =
           (case decs
             of dec :: ds => (let
-                              val {venv = venv2, tenv = tenv2} = transDec venv tenv dec
+                              val {venv = venv2, tenv = tenv2} = transDec venv tenv dec lvl
                             in 
-                              transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos})
+                              transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos}) lvl
                             end)
-              | [] => (transExp venv tenv body))
+              | [] => (transExp venv tenv body lvl))
         | trexp (A.SeqExp e) = 
           (case e
             of [] => T.UNIT
@@ -383,14 +386,14 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               | (a, _) :: b => (trexp a; trexp (A.SeqExp b))) 
         | trexp (A.CallExp {func, args, pos}) =
           (case Symbol.look (venv, func)
-            of SOME (Env.FunEntry {formals, result} ) => if(List.length (map
+            of SOME (Env.FunEntry {formals, result, ...} ) => if(List.length (map
             trexp args) <> List.length formals) then (ErrorMsg.error pos
             "SCOPE: function has incorrect number of args"; T.BOTTOM) else
               (aux_checkTypes tenv pos (map trexp args) (formals); result) 
              | _ => (ErrorMsg.error pos "SCOPE: function is out of scope"; T.BOTTOM))
         | trexp (A.AssignExp {var, exp, pos}) = 
         let 
-          val assign_var = transVar venv tenv var
+          val assign_var = transVar venv tenv var lvl
           
 
         in
@@ -404,7 +407,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             val arrSize = trexp size
             val initVal = trexp init
           in
-            convertFormatPrint tenv; checkInt pos arrSize;
+            (*convertFormatPrint tenv;*) checkInt pos arrSize;
             (case Symbol.look(tenv, typ) of
                  SOME(t) =>
                  (case actual_ty tenv t of
@@ -419,7 +422,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                     | NONE => (ErrorMsg.error pos "SCOPE: Record: was never defined"; ([], T.BOTTOM) )
                     | _ => (ErrorMsg.error pos "TYPE: Resulting type of was not record"; ([], T.BOTTOM) ))
                   
-              val test = convertFormatPrint tenv
+              (*val test = convertFormatPrint tenv*)
               fun typArgsEval (rightfield) = 
               let
                 val (rhandsymb, rhandexpression, recfieldpos) = rightfield
@@ -444,7 +447,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val namestypes = (map getTypes recfields)
               (*val namestypes = (map getTypes fields)*)
               val nstys = List.rev namestypes
-              val test = convertFormatPrint tenv
+              (*val test = convertFormatPrint tenv*)
             in 
              
               if (List.length fieldargs) <> (List.length namestypes) then
@@ -453,7 +456,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               
               (*aux_checkTypes pos namestypes fieldargs;*)
               aux_checkTypes tenv pos fieldargs nstys;
-              convertFormatPrint tenv;
+              (*convertFormatPrint tenv;*)
               rectyp
 
             end
@@ -463,8 +466,9 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
     end
     
   
-  and transDec (venv : venv) (tenv : tenv) (d : A.dec) : { venv : venv, tenv : tenv} =
+  and transDec (venv : venv) (tenv : tenv) (d : A.dec) (lvl : level) : { venv : venv, tenv : tenv} =
     let
+
 
       fun getFunEntry ({name, params, result, body, pos} : A.fundec)
                               : ((Symbol.symbol * Env.enventry)
@@ -472,21 +476,25 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                                       * (Symbol.symbol * Env.enventry) list
                                       * A.pos) = 
           let
+              val nlab = Temp.newlabel()
+              val forms = map (fn {escape, ...} => (!escape)) params
+              val nlvl = Translate.newLevel{parent = lvl, name = nlab, formals = forms }
+              val accs = Translate.formals nlvl
               fun fieldType ({typ, pos, ...} : A.field) = lookupTy pos typ tenv
-
-              val arg_entry = map (fn {name, typ, pos, ...} =>
-                                              (name, Env.VarEntry { ty = lookupTy pos typ tenv, readonly = false}) )
-                              params
-              val check = convertFormatPrint tenv
+              val zipped = ListPair.zip(params, accs)
+              val arg_entry = map (fn ({name, typ, pos, ...}, acc) =>
+                                              (name, Env.VarEntry { ty = lookupTy pos typ tenv, readonly = false, access = acc}) ) zipped
+              (*val check = convertFormatPrint tenv*)
               val res = case result
                           of SOME (r, p) => lookupTy p r tenv
                            | NONE => T.UNIT
 
               (*check for dupes here?*)
-              (*val dupe_check = *) 
-
+              (*val dupe_check = *)
+            
           in
-          ((name, Env.FunEntry { formals = map fieldType params, result = res}), body, arg_entry, pos)
+            Translate.printLevel name nlvl;
+          ((name, Env.FunEntry { formals = map fieldType params, result = res, level = nlvl, label = nlab }), body, arg_entry, pos)
           end
       
       (*fun funDupeCheck()*)
@@ -504,7 +512,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                  (symb, _) => symb
 
           (*val fun_symbs = map extract fun_entries*)
-
           
           fun checkFunDupes ([], _) = ()
             | checkFunDupes ({name, pos, params, result, body} :: fundecs, names) =
@@ -512,27 +519,22 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                     SOME(_) => (ErrorMsg.error pos ("DUPLICATE: duplicate function definitions in same batch"); ())
                       | NONE => (checkFunDupes (fundecs, name :: names));())
 
-
-
           fun insert (v : 'a Symbol.table) (xs : (Symbol.symbol * 'a) list) =
             List.foldl (fn ((n, x), v') => Symbol.enter(v', n, x) ) v xs
-          (* fun insert (v : 'a Symbol.table) ([] : (Symbol.symbol * 'a) list) = v
-            | insert v ((n, x) :: xs) = insert (Symbol.enter (v, n, x)) xs *)
-
+          
           val new_venv = insert venv fun_entries
 
           (* Semantic checking of function declarations *)
-          fun checkFunEntry (Env.FunEntry { formals, result }) (ars : (Symbol.symbol * Env.enventry) list) (body : A.exp) (pos : A.pos) =
+          fun checkFunEntry (Env.FunEntry { formals, result, level = nlvl, label}) (ars : (Symbol.symbol * Env.enventry) list) (body : A.exp) (pos : A.pos) =
             let
                   (* Before checking the body of the expression, we want the value environemnt
                   to have all of the function fields inserted int it *)
                   val ars_venv = insert new_venv ars
 
-                  val ty_body = transExp ars_venv tenv body
+                  val ty_body = transExp ars_venv tenv body nlvl
             in
               (
-              (* TODO: don't use equality to compare types FIX THISSSSSS *)
-              if (checkTypes tenv pos (result, ty_body)) = ()(*result = ty_body*) then () else ErrorMsg.error pos "TYPE: unexpected result type")
+              if (checkTypes tenv pos (result, ty_body)) = () then () else ErrorMsg.error pos "TYPE: unexpected result type")
             end
 
           fun checkAllFunEntry ([] : ((Symbol.symbol * Env.enventry) * A.exp * (Symbol.symbol * Env.enventry) list * A.pos) list) = ()
@@ -551,21 +553,12 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
              | NONE => (typeDupes (ts, name :: typeNames)); ())
   
       val prelim_tenv = List.foldl(fn ({name,...}, tv') => Symbol.enter(tv',name, T.NAME (name, ref NONE)) ) tenv ts
-      val temp = print "prelim: "
-      val temp = convertFormatPrint prelim_tenv
+      (*val temp = print "prelim: "
+      val temp = convertFormatPrint prelim_tenv*)
       val tenv = List.foldl(fn ({name, ty, pos}, tv')=>Symbol.enter(tv', name, (transTy prelim_tenv ty)) )tenv ts
-      val temp = print "stage 2: "
-      val temp = convertFormatPrint tenv
+      (*val temp = print "stage 2: "
+      val temp = convertFormatPrint tenv*)
       (*COME BACK AND ADD SEEN LIST STUFF*)
-      (*fun dig (name : Symbol.symbol ) (tenv : tenv) (pos : A.pos) : T.ty =
-        case Symbol.look(tenv, name) of SOME (T.NAME (_, tyop)) =>
-          case !tyop of SOME (T.NAME(symb,_)) => dig symb tenv pos
-           | SOME ty => ty 
-           | NONE => (ErrorMsg.error pos "TYPE: NO TYPE FOUND BY DIG, COME BACK
-           AND CHANGE THIS"; T.BOTTOM)*)
-      (*fun tenv_update (tenv : tenv) =  List.map (fn ({name, ty, pos}) => 
-        case Symbol.look(prelim_tenv, name) of SOME (T.NAME(name, r)) => r :=
-          SOME (dig name tenv pos)) ts*)
       fun tenv_update(tenv : tenv) = List.map (fn {name, ty, pos} => case
         Symbol.look(prelim_tenv, name) of 
           SOME (T.NAME(name, r)) => r := SOME(dig (valOf (Symbol.look(tenv, name))) tenv pos [] )) ts
@@ -576,49 +569,40 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
     in
         typeDupes (ts, []);
         tenv_update tenv;
-        print "stage 3: ";
-        convertFormatPrint tenv; 
+        (*print "stage 3: ";
+        convertFormatPrint tenv;*) 
         {venv = venv, tenv = tenv}
     end
     | trdec (A.VarDec ({name, escape, typ, init, pos})) =
      (case typ of SOME (symbol, pos) => 
      let
       val constraint_type = lookupTy pos symbol tenv
-      val init_type = transExp venv tenv init
-       (*val temp = (Symbol.name symbol)
-       val prin = print "HERE \n"
-       val scheck = print temp
-       val sdf = print "\n"
-       val conprint = typeToStr constraint_type
-       val initprint = typeToStr init_type
-       val prim = print "CONS: "
-       val psnf = print conprint 
-       val safd = print " INIT: "
-       val asdfsdjf = print initprint 
-       val wer = print "\n"*)
-       val check = print "VARDECENTERED"
+      val init_type = transExp venv tenv init lvl
 
        val constraintTypePlease = actual_ty tenv constraint_type
        val initTypeWork = actual_ty tenv init_type
+       val acc = Translate.allocLocal lvl (!escape)
      in
+       Translate.printAccess name acc;
        if checkNil pos (constraint_type, init_type) 
        then (checkTypes tenv pos (constraint_type, init_type); {venv =
-       Symbol.enter(venv, name, Env.VarEntry{ty = (constraint_type(*actual_ty tenv init_type*)), readonly = false}), tenv = tenv}) 
-       else (ErrorMsg.error pos "TYPE: Use of nil as initializing expression without record constraint"; {venv = Symbol.enter(venv, name, Env.VarEntry{ty = T.BOTTOM, readonly = false}), tenv = tenv})
+       Symbol.enter(venv, name, Env.VarEntry{ty = (constraint_type), readonly = false, access = acc}), tenv = tenv}) 
+       else (ErrorMsg.error pos "TYPE: Use of nil as initializing expression without record constraint"; {venv = Symbol.enter(venv, name,
+       Env.VarEntry{ty = T.BOTTOM, readonly = false, access = acc}), tenv = tenv})
      end
      
      (*(checkTypes pos (valOf(Symbol.look(tenv, symbol), (transExp venv tenv init) ) ) )*) 
      | NONE =>
          let
-           val ty = transExp venv tenv init
+           val ty = transExp venv tenv init lvl
+           val acc = Translate.allocLocal lvl (!escape)
          in
-           (print (typeToStr ty));
-           print "\n"; 
+           Translate.printAccess name acc; 
            if nilInitRule (ty, T.NIL)
            then
             (ErrorMsg.error pos ("TYPE: Use of nil initializing expression without record type"))
            else ();
-            {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = (transExp venv tenv init), readonly = false}), tenv = tenv}
+            {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = (transExp venv tenv init lvl), readonly = false, access = acc}), tenv = tenv}
          end
         )
 
@@ -637,8 +621,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
   
   and transTy                (tenv : tenv) (e : A.ty) : T.ty =
   let
-    fun trTy( A.NameTy (symbol, pos)) = (print "IS THE PROBLEM HAPPENING HERE??"
-      ; (valOf (Symbol.look(tenv, symbol)))) (*T.NAME(symbol,Symbol.look(tenv,
+    fun trTy( A.NameTy (symbol, pos)) = (valOf (Symbol.look(tenv, symbol))) (*T.NAME(symbol,Symbol.look(tenv,
       symbol))*) (*COME BACK TOTHIS DEF NOT DONE*) 
       | trTy(A.ArrayTy (symbol,pos)) = 
         (case Symbol.look(tenv, symbol) of SOME (ty) => T.ARRAY(ty, ref ())
@@ -669,10 +652,23 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
   (*(ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)*)
 
   fun transProg e = transExp Env.base_venv Env.base_tenv e
+    (Translate.newLevel({parent = Translate.outermost, name = Temp.newlabel(), formals = [true]}))
 end
 
 structure Main = 
 struct
-  fun comp fileName = Semant.transProg (Parse.parse fileName)
+  fun comp fileName =
+    let
+      val parsed = (Parse.parse fileName)
+    in 
+      (FindEscape.findEscape (parsed); Semant.transProg(parsed))
+    end
   fun compile (_, [fileName]) = (comp fileName; OS.Process.success)
 end
+
+
+(*structure Main = 
+struct
+  fun comp fileName = Semant.transProg (Parse.parse fileName)
+  fun compile (_, [fileName]) = (comp fileName; OS.Process.success)
+end*)
