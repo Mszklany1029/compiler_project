@@ -9,22 +9,23 @@ struct
 
     fun traverseVar (env : escEnv) (d : depth) (v : A.var) : unit =
       let
-        fun travVar(A.SimpleVar(symbol, pos)) = 
-          (case Symbol.look(env, symbol) of 
-                SOME (dec_depth, escape) => if dec_depth < d then escape :=
-                true else ()
+        fun travVar(A.SimpleVar(symbol (*sym*), pos)) =
+            (case Symbol.look(env, symbol) of 
+                SOME (dec_depth, escape) => (if dec_depth < d then escape :=
+                true else ()) 
               | NONE => ())
           | travVar(A.FieldVar(var, symbol, pos)) = travVar var
-          | travVar(A.SubscriptVar(var, exp, pos)) = (travVar var; traverseExp env d exp)
+          | travVar(A.SubscriptVar(var, exp, pos)) = (traverseExp env d exp; travVar var)
       in
         travVar v
       end
 
     and traverseExp (env : escEnv) (d : depth) (e : A.exp) : unit =
       let
-        fun travExp (A.VarExp var) = traverseVar env d var
+        fun travExp (A.VarExp var) = (traverseVar env d var)
           | travExp (A.NilExp) = ()
           | travExp (A.IntExp _ ) = ()
+          | travExp (A.StringExp _) = ()
           | travExp (A.CallExp({func, args, pos})) = app (fn exp => travExp exp) args
           | travExp (A.OpExp({left, oper = _, right, pos})) = (travExp left;
           travExp right) (*MAKE SURE THIS IS VALID*)
@@ -46,7 +47,7 @@ struct
           | travExp (A.WhileExp({test, body, pos})) = (travExp test; travExp body)
           | travExp (A.ForExp({var, escape, lo, hi, body, pos})) = 
             let
-              val escEntry = ((d+1), escape) (*DOES THAT DEPTH NEED TO BE ZERO?*)
+              val escEntry = (d (*(d+1)*), escape) (*DOES THAT DEPTH NEED TO BE ZERO?*)
             in 
               escape := false; 
               Symbol.enter(env, var, escEntry);
@@ -56,18 +57,27 @@ struct
             end
           | travExp (A.BreakExp pos) = ()
           | travExp (A.LetExp({decs, body, pos})) =
+           (case decs
+              of dec :: ds => (let
+                                val env2 (*{env = env2}*) = traverseDec env d dec
+                               in
+                                 traverseExp env2 d (A.LetExp {decs = ds, body = body, pos = pos})
+                               end)
+                | [] => (traverseExp env d body))
             (*((case decs 
                of [] => ()
                 | dec :: decs => traverseDec env d dec);
                 travExp body)*)
-            let
+            (*let
+              val check = print "LET EXP"
+              val nl = print "\n"
               fun processDec (dec) = traverseDec env d dec
             in
               map processDec decs; (*COME BACK AND DOUBLE CHECK THIS LINE, LIST OF ENVS COULD CAUSE ISSUE??*)
               travExp body
-            end
+            end*)
           | travExp (A.ArrayExp({typ, size, init, pos})) = (travExp size; travExp init)
-          | travExp e = 
+          (*| travExp e = PrintAbsyn.print(TextIO.stdOut, e)*)
       in 
         travExp e
       end 
@@ -95,10 +105,14 @@ struct
           | travDec(A.VarDec ({name, escape, typ, init, pos})) = 
           let
             val escEntry = (d, escape)
+            (*val ch = Symbol.look(env, name)*)
+            
+
             (*COME BACK CALL TRAVERSE ON INIT*)
           in
+            traverseExp env d init;
             escape := false;
-            Symbol.enter(env, name, escEntry)
+            Symbol.enter(env, name, (d, escape))
           end
             
           | travDec(A.TypeDec(ts )) = env

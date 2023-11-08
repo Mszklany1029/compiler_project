@@ -340,7 +340,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           let
             val testint = (checkInt pos (trexp test))
           in
-            break_check := !break_check + 1; convertFormatPrint tenv;
+            break_check := !break_check + 1; (*convertFormatPrint tenv;*)
             (case (trexp body) 
               of T.UNIT => T.UNIT
                 | _ => (ErrorMsg.error pos "TYPE: While expression returns non-unit"; T.BOTTOM));
@@ -597,11 +597,12 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
            val ty = transExp venv tenv init lvl
            val acc = Translate.allocLocal lvl (!escape)
          in
-           Translate.printAccess name acc; 
+           (*Translate.printAccess name acc;*) 
            if nilInitRule (ty, T.NIL)
            then
             (ErrorMsg.error pos ("TYPE: Use of nil initializing expression without record type"))
            else ();
+          Translate.printAccess name acc; 
             {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = (transExp venv tenv init lvl), readonly = false, access = acc}), tenv = tenv}
          end
         )
@@ -652,7 +653,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
   (*(ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)*)
 
   fun transProg e = transExp Env.base_venv Env.base_tenv e
-    (Translate.newLevel({parent = Translate.outermost, name = Temp.newlabel(), formals = [true]}))
+    (Translate.newLevel({parent = Translate.outermost, name = Temp.newlabel(), formals = [(*true*)]}))
 end
 
 structure Main = 
