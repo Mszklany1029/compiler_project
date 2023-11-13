@@ -48,12 +48,12 @@ struct
           | travExp (A.ForExp({var, escape, lo, hi, body, pos})) = 
             let
               val escEntry = (d (*(d+1)*), escape) (*DOES THAT DEPTH NEED TO BE ZERO?*)
+              val env2 = Symbol.enter(env, var, escEntry)
             in 
               escape := false; 
-              Symbol.enter(env, var, escEntry);
-              travExp lo;
-              travExp hi;
-              travExp body
+              traverseExp env2 d lo;
+              traverseExp env2 d hi;
+              traverseExp env2 d body
             end
           | travExp (A.BreakExp pos) = ()
           | travExp (A.LetExp({decs, body, pos})) =
