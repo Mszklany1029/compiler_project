@@ -1,0 +1,222 @@
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+Project 5: Intermediate Representation
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+In this project, you will translate the Absyn types into an intermediate representation.
+
+(1) You are being provided with the following files:
+    tree.sml - the AST for the Tree intermediate representation
+    printtree.sml - a pretty printer for the Tree intermediate representation.
+You will need to add these to your files from previous projects, and update your sources.cm accordingly.
+
+You are not required to use printtree.sml for anything in particular.  However, you will almost certainly find it useful
+in debugging.
+
+(2) tree.sml contains the Tree IR, which we will be translating Absyn into.  You will want to add the following type
+to translate.sig and translate.sml (so that it is defined in the module and exported):
+
+    datatype exp = Ex of Tree.exp
+                | Stm of Tree.stm
+                | Cond of Temp.label * Temp.label -> Tree.stm
+
+As described in class, this Translate.exp acts as a wrapper for the Tree IR, allowing us to mix and match translation
+of Absyn code into a Tree.exp, Tree.stm, or Tree.cond.
+
+Add the following function signatures to translate.sig to turn Translate.exp into pieces of Tree IR:
+    val toEx : exp -> Tree.exp
+    val toStm : exp -> Tree.stm
+    val toCond : exp -> (Temp.label * Temp.label -> Tree.stm)
+
+You can skip implementing toCond(Stm _), as this case should never occur in your translation.
+(And it's hard to know what to do- the whole point of something being a statement is that it doesn't return
+a value- so there's nothing to branch on.)
+
+(3)
+    (a) Add an "exp" function to frame.sig and X86Frame.sml:
+        val exp : access -> Tree.exp -> Tree.exp
+
+    (a) Implement functions with the below signatures to translate each piece of the Absyn code into Translate.exp.
+
+        val simpleVar : access * level -> exp
+        val fieldVar : exp * int -> exp
+        val subscriptVar : exp * exp -> exp
+        val nilExp : exp
+        val intExp : int -> exp
+        val stringExp : string -> exp
+        val callExp : level * level * Temp.label * exp list -> exp
+        val opExp : exp * Absyn.oper * exp -> exp
+        val recordExp : exp list -> exp
+        val seqExp : exp list -> exp
+        val assignExp : exp * exp -> exp
+        val ifExp : exp * exp * exp option -> exp
+        val whileExp : Temp.label * exp * exp -> exp
+        val forExp : Temp.label * exp * exp * exp * exp -> exp
+        val breakExp : Temp.label -> exp
+        val letExp : exp list * exp -> exp
+        val arrayExp : exp * exp -> exp
+
+    I would suggest copying all these signatures into translate.sig, then commenting them out.
+    As you implement each function in translate.sml, you can uncomment the relevant signatures.
+    This will keep your code in a compilable state, and allow you to track your progress.
+
+    (b) You will also want to add the frag type, frags value, and procEntryExit function to translate.sig and translate.sml:
+            datatype frag = PROC of { body : Tree.stm, frame : X86Frame.frame }
+                        | STRING of Temp.label * string
+
+            val frags : frag list ref
+
+            val procEntryExit : { level : level, body : exp } -> unit
+
+        frags will be used to build up a list of function definitions and strings.  STRINGs should be added 
+        to frags directly in the Translate module (when a String is encountered in the Absyn code.)
+        procEntryExit will be called from semant.sml.
+
+        A basic definition of procEntryExit, for now, is:
+            fun procEntryExit { level = Level {frame, ...}, body } =
+                frags := PROC { body = T.MOVE(T.TEMP X86Frame.RV, toEx body), frame = frame } :: (!frags)
+            | procEntryExit { level = Outermost, ...} = (print "procEntryExit: impossible"; raise ErrorMsg.Error)
+        we will adjust this definition more in future projects.
+
+More detailed advice/guidance regarding all of the above functions is available in the lecture slides.
+
+(4) Once all functions from (3) have been implemented, you will need to adjust semant.sml to
+produce a Translate.exp.  You will need to adjust the type signatures of transVar, transExp, and transDec according
+(note the return types):
+
+  fun transVar (loop : loopstat) (level : level) (venv : venv) (tenv : tenv) (v : A.var) : Tr.exp * T.ty =
+  and transExp (loop : loopstat) (level : level) (venv : venv) (tenv : tenv) (e : A.exp) : Tr.exp * T.ty =
+  and transDec (loop : loopstat) (level : level) (venv : venv) (tenv : tenv) (d : A.dec) : { exps : Tr.exp list, venv : venv, tenv : tenv} =
+
+You will also need to add a "break" parameter to transExp and transDec (see the handling of loops and break expressions in the lecture slides.)
+
+Unfortunately, changing these types will cause A LOT of errors.  Fortunately, given the functions from (3),
+producing the required Tr.exp's should be fairly straightforward.
+
+The "exps" returned by transDec is intended to allow returning expressions that initialize local variables.
+For example, given the (partial) Tiger program:
+    let var x := 10 * y in ...
+You'd want to return an exp corresponding to setting the variable x to 10.
+
+A debugging tip: if only a couple branches of a case statement are producing the incorrect type,
+SML does not do a great job of indicating which branches are problematic.  You can try commenting out
+branches to narrow down the issues.  If you comment out a branch, and a type error goes away, that branch
+was responsible.  Doing a "binary search" is possible: comment out (roughly) half the branches, to quickly
+figure out which half of the overall case statement contains a problematic branch.  Repeatedly apply this procedure
+to whichever half you determine is problematic.
+
+(5) Adjust the FunctionDec case of transDec to call procEntryExit, and generate PROC fragments for each function definition.
+
+(6) (Optional) I would suggest making use of
+    Printtree.printtree(TextIO.stdOut, <tree_stm>>);
+in your Main.comp or transProg function.  This will allow you to pretty print and examine the stament you are generating.
+
+Note that in order to see all generated code, you will need to not only call printtree on the statement directly returned
+from transProg, but also iterate over the frags, and print function definitions.
+
+(7) As with previous projects, you can run your project using Main.comp in the sml interpreter.  You may notice that
+the frags list is not automatically emptied on each call- by default it maintains all previously compiled function definitions/strings.
+You may want to add:
+    frags := [];
+to transProg, to reset frags to empty on each call.
+
+-------------------------------------------------------------------------------
+The Interpreter
+-------------------------------------------------------------------------------
+The interpret.tig file provides an interpreter for the Tree language.
+Calling `intepret prog` will intepret the tree statement `prog`.
+
+The interpreter DOES NOT attempt to support:
+    - break statements
+    - the following built in functions:
+        - flush
+        - size
+        - substring
+        - not
+        - exit
+
+If you discover other unsupported behavior, or encounter what you believe
+to be glitches in the intepreter, please let me know.
+
+-------------------------------------------------------------------------------
+The Test Script
+-------------------------------------------------------------------------------
+The test script relies on programs being run in the interpreter. You will
+need to update your Main.comp to pass the Tree programs to the interpreter.
+
+When run, the intepreter will print output in between lines
+reading `INTERPRETER` and `END INTERPRETER`.  These lines are used by the test
+script to pick up on the relevant output.
+
+There are 3 folders used by the test script: testcases, in, and out:
+    - testcases contains tiger programs
+    - out contains the expected output of a tiger program (based on the print
+    statements in that tiger program)
+    - in contains input for the tiger programs that expect input from the user
+
+-------------------------------------------------------------------------------
+Submission Requirements
+-------------------------------------------------------------------------------
+In addition to the project itself, you must submit three benchmarks
+(worth one point each), which can be translated into Tree IR without
+syntax/parsing/semantic errors. If the benchmarks require input to terminate,
+you must provide an input file.  You do not need to provide output files.
+
+Per benchmark, I will give 2 bonus points if the benchmarks is an "interesting"
+program.  This is, to some extent, a subjective judgment, but I'm basically looking
+for programs which satisfy at least one of the following criteria:
+    (1) you could imagine using in a larger, realistic program
+    (2) implement a known/useful algorithm
+    (3) solve a (non-trivial) puzzle/riddle
+    (4) can otherwise be summarised into a higher level description
+
+The provided merge.tig, bubble.tig, queens.tig, sum_loop.tig, and sum_rec.tig all
+fit the above criteria. The provided print_array.tig and cond.tig do not.
+
+You are only required to submit three benchmarks, but I will give up to 10 bonus points
+(if you submit 5 benchmarks which I classify as interesting.)
+
+Adding an explanatory commenta to the top of your program might be helpful in
+justifying its interestingness. 
+
+You may find the following functions and types useful- you are welcome to use them in writing benchmarks (see merge.tig or bubble.tig for example uses):
+
+ type any = {any : int}
+ var buffer := getchar()
+
+function readint(any: any) : int =
+ let var i := 0
+     function isdigit(s : string) : int = 
+		  ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
+     function skipto() =
+       while buffer=" " | buffer="\n"
+         do buffer := getchar()
+  in skipto();
+     any.any := isdigit(buffer);
+     while isdigit(buffer)
+       do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
+     i
+ end
+
+ type list = {first: int, rest: list}
+
+ function readlist() : list =
+    let var any := any{any=0}
+        var i := readint(any)
+     in if any.any
+         then list{first=i,rest=readlist()}
+         else nil
+    end
+
+ function printint(i: int) =
+  let function f(i:int) = if i>0 
+	     then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+
+ function printlist(l: list) =
+   if l=nil then print("\n")
+   else (printint(l.first); print(" "); printlist(l.rest))
