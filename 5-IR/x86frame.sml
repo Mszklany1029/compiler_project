@@ -5,6 +5,8 @@ struct
 
     val argOffset : int ref = ref 0
     val wordSize = 4
+    val fp = Temp.newtemp() 
+
     fun name (f : frame) : Temp.label = 
       let
         val {name, formals, frameOff} = f
@@ -44,5 +46,9 @@ struct
     fun printAccess (InFrame w) = ("(InFrame " ^ Int.toString w ^ ")")
       | printAccess (InReg _) = "InReg"
 
-    fun exp (access) = 
+    fun exp (a : access) (exp : Tree.exp) : Tree.exp = 
+      (case a of 
+            InFrame(i) => Tree.BINOP(Tree.PLUS, Tree.MEM(exp), Tree.CONST(i)) (*<---- POSSIBLE SOURCE OF ISSUES*)
+            (*WRAP WHOLE THING IN TREE.MEM?*)
+          | InReg(t) => Tree.TEMP(t))
 end
