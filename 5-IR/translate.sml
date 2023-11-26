@@ -6,6 +6,10 @@ struct
     datatype exp = Ex of Tree.exp
                  | Stm of Tree.stm
                  | Cond of Temp.label * Temp.label -> Tree.stm
+
+    datatype frag = PROC of { body : Tree.stm, frame : X86Frame.frame}
+                | STRING of Temp.label * string
+    val frags : frag list ref = ref [] 
     type access = level * X86Frame.access
 
     type inner_level = { prev_level : level, frame : X86Frame.frame, eqc : unit ref }
@@ -45,6 +49,7 @@ struct
             ^ (String.concatWith " " (map printAccess_ (formals l))) ^ "\n")
 
 
+    
     fun seq [] = TREE.EXP (TREE.CONST 0) (*COME BACK AND LOOK AT THIS*)
       | seq [s] = s
       | seq (s :: stms) = TREE.SEQ (s, seq stms)
@@ -80,24 +85,67 @@ struct
       | toCond(Stm s) = raise Fail "stm in toCond"
 
     (*ERROR RIGHT HERE!!!!*)
-    fun memWrap (e : Tree.exp) (lvldec : inner_level) (Level(lvlused) : level) =
+    (*fun memWrap (e : Tree.exp) (lvldec : inner_level) (Level(lvlused) : level) =
       (case #eqc lvldec = #eqc lvlused 
           of true => TREE.MEM(e)
-          | false => memWrap (TREE.MEM(e)) (lvldec) (#prev_level lvlused))
+          | false => memWrap (TREE.MEM(e)) (lvldec) (#prev_level lvlused))*)
+    fun procEntryExit { level = Level {frame, ...}, body} = 
+        frags := PROC { body = TREE.MOVE(TREE.TEMP X86Frame.RV, toEx body), frame = frame } :: (!frags)
+      | procEntryExit { level = Outermost, ...} = (print "procEntryExit: impossible"; raise ErrorMsg.Error)
 
-    (*fun memWrap ((e, Level(lvldec), Level(lvlused)) : Tree.exp * level * level) = 
+
+    fun memWrap ((e, Level(lvldec), Level(lvlused)) : Tree.exp * level * level) = 
       (case #eqc lvldec = #eqc lvlused
-        of True => TREE.MEM(e)
-         | False => memWrap(TREE.MEM(e), Level(lvldec), #prev_level lvlused))*)
+        of true => TREE.MEM(e)
+         | false => memWrap(TREE.MEM(e), Level(lvldec), #prev_level lvlused))
         
-    (*fun simpleVar (a, lvl)  = *)
-    (*fun fieldVar ((e, i) : exp * int) : exp = *)
-    (*fun subscriptVar ((e1, e2) : exp * exp) : exp =*)
+    fun simpleVar ((a, uselvl) : access * level) : exp  =
+      let
+        val (defLvl, x86acc) = a
+        val svar = X86Frame.exp (x86acc) (TREE.TEMP(X86Frame.fp))
+        val slink = memWrap(svar, defLvl, uselvl)
+      in 
+        Ex(slink)
+      end
+
+    fun fieldVar ((e, i) : exp * int) : exp = 
+      let
+        val offset = TREE.BINOP(TREE.MUL, TREE.CONST(i), TREE.CONST(X86Frame.wordSize))
+        (*COME BACKKKKKK: BETTER TO MANUALLY COMPUTE??*)
+        val ex = toEx e
+        val fv = TREE.BINOP(TREE.PLUS, TREE.MEM(ex), offset)
+      in
+        Ex(fv)
+      end
+
+    fun subscriptVar ((e1, e2) : exp * exp) : exp =
+      let
+        val ex1 = toEx e1
+        val ex2 = toEx e2
+        (*WHY TWO EXPS AND NOT ONE EXP AND AN INT*)
+        val offset = TREE.BINOP(TREE.MUL, ex2, TREE.CONST(X86Frame.wordSize))
+        val subVar = TREE.BINOP(TREE.PLUS, TREE.MEM(ex1), offset)
+      in
+        Ex(subVar)
+      end
+
     (*fun nilExp = *)
     fun intExp (i : int) : exp = Ex(TREE.CONST(i)) (*STM? EX? IDK*)
+
     (*fun stringExp(str : string) : exp = *)
-    (*fun callExp ((fun_lvl, call_lvl, funlab, args) : level * level * Temp.label
-      * exp list) : exp =*)
+
+
+    fun callExp ((fun_lvl, call_lvl, funlab, args) : level * level * Temp.label * exp list) : exp = 
+      let
+        val fun_name = TREE.NAME(funlab)
+        val stat_link = memWrap(TREE.TEMP(X86Frame.fp), fun_lvl, call_lvl)
+        val arg_ex = map toEx args
+        val args_prime = stat_link :: arg_ex
+        val func_call = TREE.CALL(fun_name, args_prime)
+      in
+        Ex(func_call)
+      end
+      
       
       (*tlab : label for function, lvl1 & lvl2: level of f and level of function
       * calling f*)
@@ -120,8 +168,38 @@ struct
       end
       
      (*COME BACK AND FIX THESE ALLLL NEED TO BE TUPLES*)     
-    (*fun recordExp (exs : exp list) : exp = *)
-    (*fun seqExp (exs : exp list) : exp = *)
+    fun recordExp (exs : exp list) : exp =
+      let
+        val recL = Temp.newtemp()
+        val i : int ref = ref 0
+        fun allocate (arg : exp) = 
+          let
+            val temp_loc = Temp.newtemp()
+            val offset = (!i * X86Frame.wordSize) (*<---------THIS NEEDS TOCHANGE???*)
+            val address = TREE.BINOP(TREE.PLUS, TREE.TEMP(temp_loc), TREE.CONST(offset))
+            val argEx = toEx arg
+          in 
+            i := !i + 1;
+            TREE.MOVE(TREE.MEM(address), argEx)
+          end
+        val rec_fields = map allocate exs
+        val rec_seq = seq(rec_fields)
+      in 
+        Ex(TREE.ESEQ(rec_seq, TREE.TEMP recL)) (*A/*)
+      end
+
+    fun seqExp (exs : exp list) : exp =
+      let 
+        val ex_tail = List.last exs (*<------- SEQ TAIL! COME BACK MIGHT HAVE TO DROP*)
+        (*val exs = drop(exs, )*)
+        val exStms = map toStm exs
+
+        val seqs = seq exStms
+        val return_val = toEx(ex_tail)
+      in
+        Ex(TREE.ESEQ(seqs, return_val)) 
+      end
+
     fun assignExp ((e1, e2) : exp * exp) : exp =
       let
         val lval = toEx e1
@@ -132,7 +210,7 @@ struct
       end
 
 
-    fun ifExp (test, then', SOME else') = 
+    fun ifExp ((test, then', SOME else') : exp * exp * exp option) : exp = 
       let
         val t = Temp.newlabel ()
         val f = Temp.newlabel ()
@@ -150,7 +228,7 @@ struct
                      TREE.JUMP(TREE.NAME j, [j]), 
                      TREE.LABEL f, 
                      TREE.MOVE(TREE.TEMP res, eelse), 
-                     TREE.LABEL j]
+                      TREE.LABEL j]
       in 
         Ex (TREE.ESEQ(s, TREE.TEMP res))
       end
@@ -171,9 +249,56 @@ struct
           Stm s
         end
 
-    (*fun whileExp (lab : Temp.label) (e1 : exp) (e2 : exp) : exp = *)
-    (*fun forExp*)
-    (*fun breakExp (labl : Temp.label) : exp = *)
-    (*fun letExp ((exList, ex1) : exp list * exp) : exp =*)
-    (*fun arrayExp ((e1, e2) : exp * exp) : exp = *)
+    fun whileExp ((done, condition, body) : Temp.label * exp * exp) : exp = 
+      let
+        val while_test = toCond condition
+        val test = Temp.newlabel()
+        val f = Temp.newlabel()
+        val body_exp = toEx body
+        (*COME BACK AND FIX WHLIE EXP BELOWWWWW*)
+        val s = seq [ 
+                      TREE.LABEL test, 
+                      while_test(test, done),
+                      TREE.EXP body_exp, 
+                      TREE.JUMP(TREE.NAME test, [test]),
+                      TREE.LABEL done]
+      in 
+        Stm s
+      end
+
+    (*fun forExp ((done, i, lo, hi, body) : Temp.label * exp * exp * exp * exp) : exp = 
+      let
+        val res = Temp.newtemp()
+        val iex = toEx i
+        val loex = toEx lo
+        val hiex = toEx hi
+        val body_ex = toEx body
+        val s = [ 
+                    ]
+      in 
+      end*)
+      
+    fun breakExp (done_label : Temp.label) : exp =
+      let
+        val done = TREE.NAME done_label
+      in
+        Stm(TREE.JUMP(done, [done_label]))
+      end
+
+    fun letExp ((exList, ex1) : exp list * exp) : exp = 
+      let
+        val stmList = map toStm exList
+        val s = seq stmList
+      in
+        Ex(TREE.ESEQ(s, toEx ex1))
+      end
+
+    fun arrayExp ((e1, e2) : exp * exp) : exp =
+      let
+        val ex1 = toEx e1 (*COME BACK TO ARRRAY IT'S DEFINITELY WRONG!!!*)
+        val ex2 = toEx e2
+      in 
+        Stm(TREE.MOVE(ex1, ex2))
+      end
+
 end

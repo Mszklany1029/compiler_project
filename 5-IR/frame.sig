@@ -11,5 +11,6 @@ sig
 
 	val exp : access -> Tree.exp -> Tree.exp
 	val fp : Temp.temp
+	val RV : Temp.temp
     val printAccess : access -> string
 end
