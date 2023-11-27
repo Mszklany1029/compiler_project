@@ -100,7 +100,7 @@ For example, given the (partial) Tiger program:
 You'd want to return an exp corresponding to setting the variable x to 10.
 
 A debugging tip: if only a couple branches of a case statement are producing the incorrect type,
-SML does not do a great job of indicating which branches are problematic.  You can try commenting out
+  SML does not do a great job of indicating which branches are problematic.  You can try commenting out
 branches to narrow down the issues.  If you comment out a branch, and a type error goes away, that branch
 was responsible.  Doing a "binary search" is possible: comment out (roughly) half the branches, to quickly
 figure out which half of the overall case statement contains a problematic branch.  Repeatedly apply this procedure

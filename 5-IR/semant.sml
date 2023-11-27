@@ -1,6 +1,5 @@
 (*structure A = Absyn*)
 structure T = Types
-
 structure Semant =
 struct
   type venv = Env.enventry Symbol.table
@@ -179,65 +178,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
       )
  
 
-    (*CASES FOR OTHER TYPES*)
-(*fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
-  let 
-    (*val start = (print "starting type : ")
-    val st = print (typeToStr t)*)
-    val strt = print "\n"
-  in 
-      (case t
-        of T.NAME(symb, tyop) =>
-          (case !tyop 
-            of SOME ty => ( if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else 
-              let 
-                val test = dig ty tenv pos (t :: tys)
-                (*val pre = print "outer level: " 
-                val pri = print (Symbol.name symb)
-                val prin = print " "
-                val tnt = print (typeToStr test)*)
-                val pls = print "\n"
-              in 
-                tyop := SOME test; test
-              end)
-              | NONE =>
-                  (case Symbol.look(tenv, symb)
-                    of SOME s => (if List.exists (fn ty => ty = t) tys then (ErrorMsg.error pos ("LOOP: Mutually recursive type cycle detected"); T.BOTTOM) else 
-                      let 
-                        val t = (dig s tenv pos (t :: tys))
-                        (*val p = print "inner SOME level: " 
-                        val pr =  print (Symbol.name symb) 
-                        val pri = print " " 
-                        val prin = print (typeToStr t)*)
-                        val pls = print "\n"
-                      in 
-                        tyop := SOME t;
-                        t
-                      end)
-                    | NONE => 
-                        let
-                          (*val p = print "Inner NONE level: "
-                          val pr = print (Symbol.name symb)  
-                          val pri = print " " 
-                          val prin = print (typeToStr t)*) 
-                          val pls = print "\n"
-                        in
-                          t
-                        end(*tyop := SOME t;*) 
-                  )
-            )
-         (* | T.ARRAY(otherty, u) => T.ARRAY(otherty, u)*)
-          | _ => let
-
-                val pre = print "Final case: " 
-                val tnt = print (typeToStr t)
-                val pls = print "\n"
-
-                 in
-                   t
-                 end
-      ) 
-  end *)
  
  
   fun lookupTy (pos : A.pos) (ty_sym : A.symbol) (tenv : tenv) : T.ty =
@@ -250,20 +190,26 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
          | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM)
 
 
-  fun transVar (venv : venv) (tenv : tenv) (v : A.var) (lvl : level): T.ty =
+  fun transVar (venv : venv) (tenv : tenv) (v : A.var) (lvl : level) :  Translate.exp *T.ty =
     let
       fun trVar (A.SimpleVar (symbol, pos)) = 
         (case Symbol.look(venv, symbol)
-          of SOME (Env.VarEntry {ty, readonly = _, ... }) => (*ty*)dig ty tenv pos [] (*dig symbol tenv pos*) (*THIS MIGHT BE A PROBLEM COME BACK*)
-           | SOME (Env.FunEntry { formals, result, ...}) => result
-             | NONE => ((*convertFormatPrint tenv; print " "; print (Symbol.name symbol); print " \n";*) ErrorMsg.error pos "SCOPE: no variable found"; T.BOTTOM))
+          of SOME (Env.VarEntry {ty, readonly = _, access }) =>
+          (Translate.simpleVar(access, lvl), dig ty tenv pos []) (*dig symbol tenv pos*)
+           (*| SOME (Env.FunEntry { formals, result, ...}) => result*)
+           (*<-----NOV27 IS ABOVE NEEDED??*)
+             | NONE => (ErrorMsg.error pos "SCOPE: no variable found"; (Translate.nilExp, T.BOTTOM)))
        | trVar(A.FieldVar(var, symbol, pos)) = 
         let
-          fun fieldLookup (r : T.ty) ([] : (Symbol.symbol * T.ty) list) (pos : A.pos) : T.ty  = 
-            (ErrorMsg.error pos "SCOPE: Field not found in record instance"; T.BOTTOM)
-            | fieldLookup (r) ((symb, ty) :: fs) (pos) = if (symbol = symb) then ty else (fieldLookup r fs pos)
-          val re = trVar var
- 
+          val indx : int ref = ref 0 (*COME BACK TO THIS ONE*)
+          (*WHAT IS EXP HERE!??!??!?!*)
+          val re = trVar var (*GET EXPRESSION OUT OF TRVAR VAR*)
+          val (vExp, _) = re
+          fun fieldLookup (r : T.ty) ([] : (Symbol.symbol * T.ty) list) (pos : A.pos) : Translate.exp *T.ty  = 
+            (ErrorMsg.error pos "SCOPE: Field not found in record instance";(Translate.nilExp, T.BOTTOM))
+            | fieldLookup (r) ((symb, ty) :: fs) (pos) = (if (symbol = symb)
+                                  then (Translate.fieldExp(vExp, !indx), ty) else (indx := !indx + 1; fieldLookup r fs pos))
+           
         in 
           (case (actual_ty tenv (dig re tenv pos []))
             of (r as (T.RECORD (fs, _))) => (fieldLookup r fs pos)

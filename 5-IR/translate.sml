@@ -129,7 +129,8 @@ struct
         Ex(subVar)
       end
 
-    (*fun nilExp = *)
+    val nilExp = Ex(TREE.CONST 0)
+    
     fun intExp (i : int) : exp = Ex(TREE.CONST(i)) (*STM? EX? IDK*)
 
     (*fun stringExp(str : string) : exp = *)
@@ -266,17 +267,55 @@ struct
         Stm s
       end
 
-    (*fun forExp ((done, i, lo, hi, body) : Temp.label * exp * exp * exp * exp) : exp = 
+    fun forExp ((done, i, lo, hi, body) : Temp.label * exp * exp * exp * exp) : exp = 
       let
+        val iterator = toEx i
+        val loEx = toEx lo
+        val hiEx = toEx hi
+        val bodyEx = toEx body
+        val limit = Temp.newtemp()
         val res = Temp.newtemp()
-        val iex = toEx i
-        val loex = toEx lo
-        val hiex = toEx hi
-        val body_ex = toEx body
-        val s = [ 
-                    ]
-      in 
-      end*)
+
+
+        val enter_test = toCond (Cond(fn (loLab, hiLab) => TREE.CJUMP(TREE.LE, loEx, hiEx, loLab, hiLab)))
+        val loop_test = toCond (Cond(fn (iLab, limlab) => TREE.CJUMP(TREE.LT, iterator, TREE.TEMP limit, iLab, limlab)))
+
+
+
+        val initialize = Temp.newlabel()
+        val body_label = Temp.newlabel()
+        val test = Temp.newlabel()
+        val done = Temp.newlabel()
+              
+        val s = seq [ TREE.MOVE(iterator, loEx), 
+                      TREE.MOVE(TREE.TEMP limit, hiEx),
+                      enter_test(body_label, done), 
+                      TREE.LABEL body_label, 
+                      TREE.MOVE(TREE.TEMP res, bodyEx), 
+                      TREE.MOVE(iterator, TREE.BINOP(TREE.PLUS, iterator, TREE.CONST 1)),
+                      TREE.LABEL test, 
+                      loop_test(body_label, done), 
+                      TREE.LABEL(done)
+                      ]
+
+        (*val s = seq [ enter_test(initialize, done) (*WHAT TO DO ABOUT LABELS?*),
+                      TREE.LABEL initialize,
+                      TREE.MOVE(iterator, loEx),
+                      TREE.MOVE(TREE.TEMP limit, hiEx),
+                      TREE.JUMP(TREE.NAME test, [test]),
+                      TREE.LABEL body_label,
+                      (*TREE.EXP bodyEx,*)
+                      TREE.MOVE(TREE.TEMP res, bodyEx),
+                      TREE.MOVE(iterator, TREE.BINOP(TREE.PLUS, iterator, TREE.CONST 1)),
+                      TREE.LABEL test,
+                      loop_test(body_label, done),
+                      TREE.LABEL done
+                      ]*)
+      in
+        (*Stm s*)
+        Ex(TREE.ESEQ(s, TREE.TEMP res))
+      end
+
       
     fun breakExp (done_label : Temp.label) : exp =
       let
