@@ -24,7 +24,7 @@ sig
 	val subscriptVar : exp * exp -> exp
 	val nilExp : exp
 	val intExp : int -> exp
-	(*val stringExp : string -> exp*)
+	val stringExp : string -> exp
 	val callExp : level * level * Temp.label * exp list -> exp
 	val opExp : exp * Absyn.oper * exp -> exp
 	val recordExp : exp list -> exp

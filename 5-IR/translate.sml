@@ -113,15 +113,15 @@ struct
         val offset = TREE.BINOP(TREE.MUL, TREE.CONST(i), TREE.CONST(X86Frame.wordSize))
         (*COME BACKKKKKK: BETTER TO MANUALLY COMPUTE??*)
         val ex = toEx e
-        val fv = TREE.BINOP(TREE.PLUS, TREE.MEM(ex), offset)
+        val fv = TREE.BINOP(TREE.PLUS, TREE.MEM(ex), offset) (*DBL CHECK MEM!!!!*)
       in
         Ex(fv)
       end
 
-    fun subscriptVar ((e1, e2) : exp * exp) : exp =
+    fun subscriptVar ((pointer, index) : exp * exp) : exp =
       let
-        val ex1 = toEx e1
-        val ex2 = toEx e2
+        val ex1 = toEx pointer
+        val ex2 = toEx index
         (*WHY TWO EXPS AND NOT ONE EXP AND AN INT*)
         val offset = TREE.BINOP(TREE.MUL, ex2, TREE.CONST(X86Frame.wordSize))
         val subVar = TREE.BINOP(TREE.PLUS, TREE.MEM(ex1), offset)
@@ -133,7 +133,14 @@ struct
     
     fun intExp (i : int) : exp = Ex(TREE.CONST(i)) (*STM? EX? IDK*)
 
-    (*fun stringExp(str : string) : exp = *)
+    fun stringExp(str : string) : exp =
+      let
+        val stringLab = Temp.newlabel() (*DEF COME BACK AND DOUBLE CHECK THIS oNEEEE!!!*)
+        val stringFrag = STRING(stringLab, str)
+      in
+        frags := stringFrag :: !frags;
+        Ex(TREE.NAME(stringLab))
+      end
 
 
     fun callExp ((fun_lvl, call_lvl, funlab, args) : level * level * Temp.label * exp list) : exp = 
@@ -282,7 +289,7 @@ struct
 
 
 
-        val initialize = Temp.newlabel()
+        (*val initialize = Temp.newlabel()*)
         val body_label = Temp.newlabel()
         val test = Temp.newlabel()
         val done = Temp.newlabel()
@@ -291,7 +298,8 @@ struct
                       TREE.MOVE(TREE.TEMP limit, hiEx),
                       enter_test(body_label, done), 
                       TREE.LABEL body_label, 
-                      TREE.MOVE(TREE.TEMP res, bodyEx), 
+                      (*TREE.MOVE(TREE.TEMP res, bodyEx)*)
+                      TREE.EXP bodyEx, 
                       TREE.MOVE(iterator, TREE.BINOP(TREE.PLUS, iterator, TREE.CONST 1)),
                       TREE.LABEL test, 
                       loop_test(body_label, done), 
@@ -312,8 +320,8 @@ struct
                       TREE.LABEL done
                       ]*)
       in
-        (*Stm s*)
-        Ex(TREE.ESEQ(s, TREE.TEMP res))
+        Stm s
+        (*Ex(TREE.ESEQ(s, TREE.TEMP res))*)
       end
 
       
@@ -337,7 +345,7 @@ struct
         val ex1 = toEx e1 (*COME BACK TO ARRRAY IT'S DEFINITELY WRONG!!!*)
         val ex2 = toEx e2
       in 
-        Stm(TREE.MOVE(ex1, ex2))
+        Ex(TREE.CALL(TREE.NAME(Temp.namedlabel "initArray"), [ex1, ex2]))
       end
 
 end

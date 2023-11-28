@@ -1,5 +1,6 @@
 (*structure A = Absyn*)
 structure T = Types
+(*structure Tr = Translate*)
 structure Semant =
 struct
   type venv = Env.enventry Symbol.table
@@ -190,10 +191,10 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
          | NONE => (ErrorMsg.error pos ("SCOPE: Did not recognize type " ^ Symbol.name ty_sym); T.BOTTOM)
 
 
-  fun transVar (venv : venv) (tenv : tenv) (v : A.var) (lvl : level) :  Translate.exp *T.ty =
+  fun transVar (venv : venv) (tenv : tenv) (v : A.var) (lvl : level) : Translate.exp * T.ty =
     let
       fun trVar (A.SimpleVar (symbol, pos)) = 
-        (case Symbol.look(venv, symbol)
+        (case Symbol.look(venv, symbo)
           of SOME (Env.VarEntry {ty, readonly = _, access }) =>
           (Translate.simpleVar(access, lvl), dig ty tenv pos []) (*dig symbol tenv pos*)
            (*| SOME (Env.FunEntry { formals, result, ...}) => result*)
@@ -204,24 +205,25 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           val indx : int ref = ref 0 (*COME BACK TO THIS ONE*)
           (*WHAT IS EXP HERE!??!??!?!*)
           val re = trVar var (*GET EXPRESSION OUT OF TRVAR VAR*)
-          val (vExp, _) = re
+          val (vExp, reType) = re
           fun fieldLookup (r : T.ty) ([] : (Symbol.symbol * T.ty) list) (pos : A.pos) : Translate.exp *T.ty  = 
             (ErrorMsg.error pos "SCOPE: Field not found in record instance";(Translate.nilExp, T.BOTTOM))
             | fieldLookup (r) ((symb, ty) :: fs) (pos) = (if (symbol = symb)
-                                  then (Translate.fieldExp(vExp, !indx), ty) else (indx := !indx + 1; fieldLookup r fs pos))
-           
+                                  then (Translate.fieldVar(vExp, !indx), ty) else (indx := !indx + 1; fieldLookup r fs pos))
+            
         in 
-          (case (actual_ty tenv (dig re tenv pos []))
+          (case (actual_ty tenv (dig reType tenv pos []))
             of (r as (T.RECORD (fs, _))) => (fieldLookup r fs pos)
-              | _ => (ErrorMsg.error pos "SCOPE: Var is not a record"; T.BOTTOM))
+              | _ => (ErrorMsg.error pos "SCOPE: Var is not a record"; (Translate.nilExp, T.BOTTOM)))
         end
       | trVar(A.SubscriptVar(var, exp, pos)) =
         let
-          val t = trVar var
+          val (tExp, tType) = trVar var (*<-- this one is the pointer*)
+          val (indxExp, indxType) = transExp venv tenv exp lvl Temp.newlabel()
         in 
-          (case (actual_ty tenv (dig t tenv pos [])) of
-                (T.ARRAY (ty, _)) => (checkInt pos (transExp venv tenv exp lvl); ty) 
-                | _ => (ErrorMsg.error pos "SCOPE: Var is not of Arraytype"; T.BOTTOM) (*don't know why it's scope and not type but okay*)
+          (case (actual_ty tenv (dig tType tenv pos [])) of
+                (T.ARRAY (ty, _)) => (checkInt pos indxType; (Translate.subscriptVar(tExp, indxExp), ty)) 
+                | _ => (ErrorMsg.error pos "SCOPE: Var is not of Arraytype"; (Translate.nilExp, T.BOTTOM)) (*don't know why it's scope and not type but okay*)
           )  
         end
           
@@ -229,181 +231,288 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
       trVar v
     end
 
-  and transExp (venv : venv) (tenv : tenv) (e : A.exp) (lvl : level) : T.ty =
+  and transExp (venv : venv) (tenv : tenv) (e : A.exp) (lvl : level) (break_lab : Temp.label) : Tr.exp * T.ty =
     let
        
       fun trexp (A.VarExp var (*(A.SimpleVar (s, pos))*)) =
-        transVar venv tenv var lvl
-        | trexp (A.BreakExp pos) = if !break_check = 0 then (ErrorMsg.error pos "MISPLACED: illegal use of break"; T.BOTTOM) else T.UNIT
-        | trexp (A.IntExp _) = T.INT
-        | trexp (A.StringExp _) = T.STRING
-        | trexp (A.NilExp) = T.NIL
-        | trexp (A.OpExp { left, oper=A.PlusOp, right, pos} : A.exp) : T.ty =
-          (checkInt pos (trexp left);
-           checkInt pos (trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.MinusOp, right, pos} : A.exp) : T.ty = 
-          (checkInt pos (trexp left);
-           checkInt pos (trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.TimesOp, right, pos} : A.exp) : T.ty = 
-          (checkInt pos (trexp left); 
-           checkInt pos (trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.DivideOp, right, pos} : A.exp) : T.ty =
-          (checkInt pos (trexp left);
-           checkInt pos (trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.LtOp, right, pos} : A.exp) : T.ty =
-          (checkCompArgs pos (trexp left, trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.GtOp, right, pos} : A.exp) : T.ty =
-          (checkCompArgs pos (trexp left, trexp right); T.INT) 
-        | trexp (A.OpExp { left, oper = A.LeOp, right, pos} : A.exp) : T.ty =
-          (checkCompArgs pos (trexp left, trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp) : T.ty =
-          (checkCompArgs pos (trexp left, trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp) : T.ty =
-          (checkEqArgs pos (trexp left, trexp right); T.INT)
-        | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp) : T.ty = 
-          (checkEqArgs pos (trexp left, trexp right); T.INT) 
-        | trexp (A.IfExp {test, then', else' = NONE, pos} : A.exp) : T.ty =
+        let
+          val (varXP, varType) = transVar venv tenv var lvl
+
+        in
+          (varXP, varType) (*WILL PROBABLY ACTUALLY WANT A TUPLE HERE*)
+        end
+        | trexp (A.BreakExp pos) = if !break_check = 0 then (ErrorMsg.error pos
+        "MISPLACED: illegal use of break"; (Tr.nilExp, T.BOTTOM)) else (Tr.breakExp(break_lab), T.UNIT)
+        | trexp (A.IntExp i) = (Tr.intExp i, T.INT)
+        | trexp (A.StringExp str) = 
+            let
+              (*COME BACKKKKKKKK NEED TO CALL PROCENTRYEXIT??????*)
+            in 
+              (Tr.stringExp(str), T.STRING)
+            end
+        | trexp (A.NilExp) = (Tr.nilExp, T.NIL)
+        | trexp (A.OpExp { left, oper=A.PlusOp, right, pos} : A.exp)  =
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType) = trexp right
+            in
+              checkInt pos leftType; 
+              checkInt pos rightType;
+              (Tr.opExp(leftExp, A.PlusOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.MinusOp, right, pos} : A.exp)  = 
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType) = trexp right
+            in
+              checkInt pos leftType; 
+              checkInt pos rightType;
+              (Tr.opExp(leftExp, A.MinusOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.TimesOp, right, pos} : A.exp)  = 
+            let
+              val (leftExp, leftType) = trexp left val (leftExp, leftType) = trexp left
+
+              val (rightExp, rightType) = trexp right
+            in
+              checkInt pos leftType; 
+              checkInt pos rightType;
+              (Tr.opExp(leftExp, A.TimesOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.DivideOp, right, pos} : A.exp)  =
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType) = trexp right
+            in
+              checkInt pos leftType; 
+              checkInt pos rightType;
+              (Tr.opExp(leftExp, A.DivideOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.LtOp, right, pos} : A.exp)  =
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType) = trexp right
+            in 
+              checkCompArgs pos (leftType, rightType);
+              (Tr.opExp(leftExp, A.LtOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.GtOp, right, pos} : A.exp)  =
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType) = trexp right
+            in 
+              checkCompArgs pos (leftType, rightType);
+              (Tr.opExp(leftExp, A.GtOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.LeOp, right, pos} : A.exp)  =
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType) = trexp right
+            in
+              checkCompArgs pos (leftType, rightType);
+              (Tr.opExp(leftExp, A.LeOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp)  =
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType) = trexp right
+            in 
+              checkCompArgs pos (leftType, rightType);
+              (Tr.opExp(leftExp, A.GeOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp)  =
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType) = trexp right
+            in
+              checkCompArgs pos (leftType, rightType);
+              (Tr.opExp(leftExp, A.EqOp, rightExp), T.INT)
+            end
+        | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp)  = 
+            let
+              val (leftExp, leftType) = trexp left
+              val (rightExp, rightType)  = trexp right
+            in
+              checkCompArgs (leftType, rightType);
+              (Tr.opExp(leftExp, A.NeqOp, rightExp), T.INT)
+            end
+        | trexp (A.IfExp {test, then', else' = NONE, pos} : A.exp)  =
           let
-            val thenty = dig (trexp then') tenv pos []
+            val (thenExp, thenTy) = trexp then'
+            val thenty = dig thenTy tenv pos []
+            val (testExp, testTy) = trexp test 
           in
-          checkInt pos (trexp test);
+          checkInt pos testTy;
           (case thenty
-            of T.UNIT => T.UNIT
+            of T.UNIT => (Tr.ifExp(testExp, thenExp, NONE), T.UNIT)
               | _ => (ErrorMsg.error pos "TYPE: if-then returns non unit";
-              T.BOTTOM))
+              (Tr.nilExp, T.BOTTOM)))
           end
         | trexp (A.IfExp {test, then', else' = SOME(exp3), pos} : A.exp) : T.ty =
           let
-            val thenty = (dig (trexp then') tenv pos [])
-            val elsety = (dig (trexp exp3) tenv pos []) 
+            val (thenExp, thenTy) = trexp then'
+            val (elseExp, elseTy) = trexp exp3
+            val thenty = (dig thenTy tenv pos [])
+            val elsety = (dig elseTy tenv pos [])
+            val (testExp, testTy) = trexp test
           in 
-            checkInt pos (trexp test);
+            checkInt pos testTy;
             checkTypes tenv pos (thenty, elsety);
-            thenty
+            (Tr.ifExp(testExp, thenExp, elseExp), thenty) (*<---11/27 COULD THIS CAUSE ISSUES???*)
           end
 
         | trexp (A.WhileExp {test, body, pos}: A.exp) : T.ty =
           let
-            val testint = (checkInt pos (trexp test))
+            val (test_exp, test_ty) = trexp test
+            val (body_exp, body_ty) = trexp body
+            val testint = (checkInt pos test_ty)
+            val brLab = Temp.newtemp()
           in
             break_check := !break_check + 1; (*convertFormatPrint tenv;*)
-            (case (trexp body) 
+            (case body_ty 
               of T.UNIT => T.UNIT
-                | _ => (ErrorMsg.error pos "TYPE: While expression returns non-unit"; T.BOTTOM));
+                | _ => (ErrorMsg.error pos "TYPE: While expression returns non-unit"; (Tr.nilExp, T.BOTTOM)));
                 break_check := !break_check -1;
-                T.UNIT
+                (Tr.whileExp(brLab, test_exp, body_exp), T.UNIT)
                 
           end
         | trexp (A.ForExp {var, escape, lo, hi, body, pos}) = 
         
           let
-            val lores = (trexp lo)
-            val hires = (trexp hi)
+            val (lores_exp, lores_ty) = (trexp lo)
+            val (hires_exp, hires_ty) = (trexp hi)
             val acc = Translate.allocLocal lvl (!escape)
             val venv' = Symbol.enter(venv, var, Env.VarEntry{ty = T.INT, readonly = true, access = acc})
-            (*val bodyexp = transExp venv' tenv body*)
-            (*val bodyexp = (transExp venv tenv' (transVar venv tenv
-            * Env.VarEntry{var}))*)
+            val iteratorExp = Tr.simpleVar(acc, lvl)
+            val bLab = Temp.newlabel()
+            val (bodyexp, bodyty) = transExp venv' tenv body lvl bLab 
           in 
-            (*(transExp venv tenv var);*)
             Translate.printAccess var acc;
-            checkInt pos lores;
-            checkInt pos hires;
+            checkInt pos lores_ty;
+            checkInt pos hires_ty;
             break_check := !break_check + 1;
-            (case (transExp venv' tenv body lvl) (*bodyexp*)
-              of T.UNIT => T.UNIT
-                | _ => (ErrorMsg.error pos "TYPE: For expression returns non-unit"; T.BOTTOM));
+            (case bodyty (*bodyexp*)
+              of T.UNIT => (Tr.nilExp, T.UNIT)
+                | _ => (ErrorMsg.error pos "TYPE: For expression returns non-unit"; (Tr.nilExp, T.BOTTOM) ));
             break_check := !break_check - 1;
-            T.UNIT
+            (Tr.forExp(bLab, iteratorExp, lores_exp, hires_exp, bodyexp), T.UNIT)
           end
           
         | trexp (A.LetExp {decs = decs, body, pos}) =
           (case decs
             of dec :: ds => (let
                               val {venv = venv2, tenv = tenv2} = transDec venv tenv dec lvl
+                              val (letexp_exp, letExp_type) = transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos}) lvl break_lab
                             in 
-                              transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos}) lvl
+                              (Tr.nilExp, letExp_type) (*COME BACK FOR TRANS DEC STUF!!!!!!!!*)
+                              (*transExp venv2 tenv2 (A.LetExp {decs = ds, body =
+                              body, pos = pos}) lvl*)
                             end)
-              | [] => (transExp venv tenv body lvl))
+              | [] => (transExp venv tenv body lvl break_lab)) (*COME BACK AND EDIT THIS PARTTT*)
         | trexp (A.SeqExp e) = 
-          (case e
-            of [] => T.UNIT
-              | [(a, _)] => trexp a
-              | (a, _) :: b => (trexp a; trexp (A.SeqExp b))) 
+            let
+              fun seqList_create lseqs =
+                (case lseqs
+                  of [] => ([], T.UNIT)
+                    | [(a, _)] => 
+                        let
+                          val (seq_exp, seq_type) = trexp a
+                        in
+                          ([seq_exp], seq_type)
+                        end
+                  | (a, _) :: b => 
+                      let
+                        val(aSeqExp, aSeqType) = trexp a
+                        val (bSeqs, btype) = seqList_create b 
+                        (*(trexp a; trexp (A.SeqExp b))*)
+
+                      in
+                        (aSeqExp :: bSeqs, btype)
+                      end)
+                val (seqList, stype) = seqList_create e
+            in 
+              (Tr.seqExp(seqList), stype)
+            end
+
         | trexp (A.CallExp {func, args, pos}) =
           (case Symbol.look (venv, func)
-            of SOME (Env.FunEntry {formals, result, ...} ) => if(List.length (map
-            trexp args) <> List.length formals) then (ErrorMsg.error pos
-            "SCOPE: function has incorrect number of args"; T.BOTTOM) else
-              (aux_checkTypes tenv pos (map trexp args) (formals); result) 
-             | _ => (ErrorMsg.error pos "SCOPE: function is out of scope"; T.BOTTOM))
+            of SOME (Env.FunEntry {formals, result, level = func_lvl, label} ) => 
+                let
+                  val argsTupList = map trexp args
+                  val (argsExpList, argsTyList) = ListPair.unzip argsTupList
+                in
+                  (case (List.length argsTyList <> List.length formals) 
+                    of true => (ErrorMsg.error pos "SCOPE: functin has incorrect number of args"; (Tr.nilExp, T.BOTTOM)) 
+                      | false => (aux_checkTypes tenv pos argsTyList formals; (Tr.callExp(func_lvl, lvl, label, argsExpList), result)))
+                end
+            (*if(List.length (map trexp args) <> List.length formals) then (ErrorMsg.error pos "SCOPE: function has incorrect number of args"; (Tr.nilExp, T.BOTTOM)) else
+              (aux_checkTypes tenv pos (map trexp args) (formals); result)*)
+             | _ => (ErrorMsg.error pos "SCOPE: function is out of scope"; (Tr.nilExp, T.BOTTOM)))
         | trexp (A.AssignExp {var, exp, pos}) = 
-        let 
-          val assign_var = transVar venv tenv var lvl
-          
-
-        in
-          checkReadOnly pos var venv;
-          checkTypes tenv pos (assign_var, trexp exp); T.UNIT
-
-        end
+            let 
+              val (assign_exp, assign_var) = transVar venv tenv var lvl
+              val (rval_exp, rval_type) = trexp exp
+            in
+              checkReadOnly pos var venv;
+              checkTypes tenv pos (assign_var, rval_type); 
+              (Tr.assignExp(assign_exp, rval_exp), T.UNIT)
+            end
 
         | trexp (A.ArrayExp {typ, size, init, pos} ) =
-          let
-            val arrSize = trexp size
-            val initVal = trexp init
-          in
-            (*convertFormatPrint tenv;*) checkInt pos arrSize;
-            (case Symbol.look(tenv, typ) of
-                 SOME(t) =>
-                 (case actual_ty tenv t of
-                    T.ARRAY(at, u) => (checkTypes tenv pos (actual_ty tenv at, actual_ty tenv initVal); (*diinitVal tenv pos []*)T.ARRAY(at, u))
-                    | _ => (ErrorMsg.error pos ("TYPE: Not of arrtyp: " ^ Symbol.name typ); T.BOTTOM)))
-          end
+            let
+              val (arrSize_exp, arrSize_type) = trexp size
+              val (initVal_exp, initVal_type) = trexp init
+            in
+              checkInt pos arrSize_type;
+              (case Symbol.look(tenv, typ) of
+                  SOME(t) =>
+                  (case actual_ty tenv t of
+                      T.ARRAY(at, u) => (checkTypes tenv pos (actual_ty tenv at, actual_ty tenv initVal_exp); (Tr.arrayExp(arrSize_exp, initVal_exp), T.ARRAY(at, u)) )
+                      | _ => (ErrorMsg.error pos ("TYPE: Not of arrtyp: " ^ Symbol.name typ); (Tr.nilExp, T.BOTTOM) )))
+            end
         | trexp (A.RecordExp{fields, typ, pos}) = 
             let
               val (recfields, rectyp) = 
                 (case (Symbol.look(tenv, typ)) of 
-                     SOME(T.RECORD(rfs, u)) => (rfs, T.RECORD(rfs, u))
+                     SOME(T.RECORD(rfs, u)) => (rfs, T.RECORD(rfs, u)) (*RETURNING A SYMBOL* TY LIST in RFS*)
                     | NONE => (ErrorMsg.error pos "SCOPE: Record: was never defined"; ([], T.BOTTOM) )
                     | _ => (ErrorMsg.error pos "TYPE: Resulting type of was not record"; ([], T.BOTTOM) ))
                   
               (*val test = convertFormatPrint tenv*)
               fun typArgsEval (rightfield) = 
-              let
-                val (rhandsymb, rhandexpression, recfieldpos) = rightfield
-              in 
-                trexp rhandexpression
-              end       
+                let
+                  val (rhandsymb, rhandexpression, recfieldpos) = rightfield
+                  val (rhandexpression_exp, rhandexpression_ty) = trexp rhandexpression
+                in 
+                  (rhandexpression_exp, rhandexpression_ty)
+                end       
               
               fun getTypes (recfield ) = 
                 let
-                  (*val (symb, rexp, rpos) = recfield*)
-                  (*val (rpos, rexp, rsymb) = recfield*) (*THIS MAY CAUSE PROBLEMS
-                  COME BACK*)
-                    (*val test = print (Symbol.name rsymb)*)
                   val (rsymb, rtyp) = recfield
-
                 in 
-                  (*lookupTy pos rsymb tenv*)
                   rtyp
                 end 
                 
-              val fieldargs = (map typArgsEval fields)
+              val fieldargs = (map typArgsEval fields) 
+              val (fieldArgs_exp, fieldArgs_ty) = ListPair.unzip fieldargs
               val namestypes = (map getTypes recfields)
               (*val namestypes = (map getTypes fields)*)
-              val nstys = List.rev namestypes
+              val nstys = List.rev namestypes (*<-------11/28 WHY AM I REVERSING THIS AGAIN??*)
               (*val test = convertFormatPrint tenv*)
             in 
              
-              if (List.length fieldargs) <> (List.length namestypes) then
+              if (List.length fieldArgs_ty) <> (List.length namestypes) then
                 (ErrorMsg.error pos "SCOPE: fields unitialized"; T.BOTTOM) else
                   T.UNIT;
               
               (*aux_checkTypes pos namestypes fieldargs;*)
-              aux_checkTypes tenv pos fieldargs nstys;
+              aux_checkTypes tenv pos fieldArgs_ty nstys;
               (*convertFormatPrint tenv;*)
-              rectyp
+              (*rectyp <--------- 11/28 RETURNING JUST RECTYPE MEANS WE CAN RETURN T.RECORD, TIME TO CHANGE IT TO ALLOW THE TRANSLATE AS WELL*)
+
+              (Tr.recordExp(fieldArgs_exp), rectyp) (*<--11/28 COME BACK MAKE SURE THIS IS RIGHTTTTTTTTTTTTTTTTT*)
+
 
             end
                   
