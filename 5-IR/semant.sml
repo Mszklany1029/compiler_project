@@ -194,7 +194,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
   fun transVar (venv : venv) (tenv : tenv) (v : A.var) (lvl : level) : Translate.exp * T.ty =
     let
       fun trVar (A.SimpleVar (symbol, pos)) = 
-        (case Symbol.look(venv, symbo)
+        (case Symbol.look(venv, symbol)
           of SOME (Env.VarEntry {ty, readonly = _, access }) =>
           (Translate.simpleVar(access, lvl), dig ty tenv pos []) (*dig symbol tenv pos*)
            (*| SOME (Env.FunEntry { formals, result, ...}) => result*)
@@ -219,7 +219,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
       | trVar(A.SubscriptVar(var, exp, pos)) =
         let
           val (tExp, tType) = trVar var (*<-- this one is the pointer*)
-          val (indxExp, indxType) = transExp venv tenv exp lvl Temp.newlabel()
+          val (indxExp, indxType) = transExp venv tenv exp lvl (Temp.newlabel())
         in 
           (case (actual_ty tenv (dig tType tenv pos [])) of
                 (T.ARRAY (ty, _)) => (checkInt pos indxType; (Translate.subscriptVar(tExp, indxExp), ty)) 
@@ -248,10 +248,10 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             let
               (*COME BACKKKKKKKK NEED TO CALL PROCENTRYEXIT??????*)
             in 
-              (Tr.stringExp(str), T.STRING)
+              (Tr.stringExp(#1 str), T.STRING) (*<-- come back and change?*)
             end
         | trexp (A.NilExp) = (Tr.nilExp, T.NIL)
-        | trexp (A.OpExp { left, oper=A.PlusOp, right, pos} : A.exp)  =
+        | trexp (A.OpExp { left, oper=A.PlusOp, right, pos} : A.exp) =
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
@@ -260,7 +260,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               checkInt pos rightType;
               (Tr.opExp(leftExp, A.PlusOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.MinusOp, right, pos} : A.exp)  = 
+        | trexp (A.OpExp { left, oper = A.MinusOp, right, pos} : A.exp) = 
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
@@ -269,17 +269,16 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               checkInt pos rightType;
               (Tr.opExp(leftExp, A.MinusOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.TimesOp, right, pos} : A.exp)  = 
+        | trexp (A.OpExp { left, oper = A.TimesOp, right, pos} : A.exp) = 
             let
-              val (leftExp, leftType) = trexp left val (leftExp, leftType) = trexp left
-
+              val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
             in
               checkInt pos leftType; 
               checkInt pos rightType;
               (Tr.opExp(leftExp, A.TimesOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.DivideOp, right, pos} : A.exp)  =
+        | trexp (A.OpExp { left, oper = A.DivideOp, right, pos} : A.exp) =
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
@@ -288,7 +287,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               checkInt pos rightType;
               (Tr.opExp(leftExp, A.DivideOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.LtOp, right, pos} : A.exp)  =
+        | trexp (A.OpExp { left, oper = A.LtOp, right, pos} : A.exp) =
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
@@ -296,7 +295,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               checkCompArgs pos (leftType, rightType);
               (Tr.opExp(leftExp, A.LtOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.GtOp, right, pos} : A.exp)  =
+        | trexp (A.OpExp { left, oper = A.GtOp, right, pos} : A.exp) =
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
@@ -304,7 +303,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               checkCompArgs pos (leftType, rightType);
               (Tr.opExp(leftExp, A.GtOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.LeOp, right, pos} : A.exp)  =
+        | trexp (A.OpExp { left, oper = A.LeOp, right, pos} : A.exp) =
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
@@ -312,7 +311,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               checkCompArgs pos (leftType, rightType);
               (Tr.opExp(leftExp, A.LeOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp)  =
+        | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp) =
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
@@ -320,7 +319,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               checkCompArgs pos (leftType, rightType);
               (Tr.opExp(leftExp, A.GeOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp)  =
+        | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp) =
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
@@ -328,15 +327,15 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               checkCompArgs pos (leftType, rightType);
               (Tr.opExp(leftExp, A.EqOp, rightExp), T.INT)
             end
-        | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp)  = 
+        | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp) = 
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType)  = trexp right
             in
-              checkCompArgs (leftType, rightType);
+              checkCompArgs pos (leftType, rightType);
               (Tr.opExp(leftExp, A.NeqOp, rightExp), T.INT)
             end
-        | trexp (A.IfExp {test, then', else' = NONE, pos} : A.exp)  =
+        | trexp (A.IfExp {test, then', else' = NONE, pos} : A.exp) =
           let
             val (thenExp, thenTy) = trexp then'
             val thenty = dig thenTy tenv pos []
@@ -348,7 +347,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               | _ => (ErrorMsg.error pos "TYPE: if-then returns non unit";
               (Tr.nilExp, T.BOTTOM)))
           end
-        | trexp (A.IfExp {test, then', else' = SOME(exp3), pos} : A.exp) : T.ty =
+        | trexp (A.IfExp {test, then', else' = SOME(exp3), pos} : A.exp) =
           let
             val (thenExp, thenTy) = trexp then'
             val (elseExp, elseTy) = trexp exp3
@@ -358,19 +357,19 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           in 
             checkInt pos testTy;
             checkTypes tenv pos (thenty, elsety);
-            (Tr.ifExp(testExp, thenExp, elseExp), thenty) (*<---11/27 COULD THIS CAUSE ISSUES???*)
+            (Tr.ifExp(testExp, thenExp, SOME(elseExp)), thenty) (*<---11/27 COULD THIS CAUSE ISSUES???*)
           end
 
-        | trexp (A.WhileExp {test, body, pos}: A.exp) : T.ty =
+        | trexp (A.WhileExp {test, body, pos}: A.exp) =
           let
             val (test_exp, test_ty) = trexp test
             val (body_exp, body_ty) = trexp body
             val testint = (checkInt pos test_ty)
-            val brLab = Temp.newtemp()
+            val brLab = Temp.newlabel()
           in
             break_check := !break_check + 1; (*convertFormatPrint tenv;*)
             (case body_ty 
-              of T.UNIT => T.UNIT
+              of T.UNIT => (Tr.nilExp, T.UNIT)
                 | _ => (ErrorMsg.error pos "TYPE: While expression returns non-unit"; (Tr.nilExp, T.BOTTOM)));
                 break_check := !break_check -1;
                 (Tr.whileExp(brLab, test_exp, body_exp), T.UNIT)
@@ -401,7 +400,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
         | trexp (A.LetExp {decs = decs, body, pos}) =
           (case decs
             of dec :: ds => (let
-                              val {venv = venv2, tenv = tenv2} = transDec venv tenv dec lvl
+                              val {venv = venv2, tenv = tenv2} = transDec venv tenv dec lvl break_lab
                               val (letexp_exp, letExp_type) = transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos}) lvl break_lab
                             in 
                               (Tr.nilExp, letExp_type) (*COME BACK FOR TRANS DEC STUF!!!!!!!!*)
@@ -467,7 +466,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               (case Symbol.look(tenv, typ) of
                   SOME(t) =>
                   (case actual_ty tenv t of
-                      T.ARRAY(at, u) => (checkTypes tenv pos (actual_ty tenv at, actual_ty tenv initVal_exp); (Tr.arrayExp(arrSize_exp, initVal_exp), T.ARRAY(at, u)) )
+                      T.ARRAY(at, u) => (checkTypes tenv pos (actual_ty tenv at, actual_ty tenv initVal_type); (Tr.arrayExp(arrSize_exp, initVal_exp), T.ARRAY(at, u)) )
                       | _ => (ErrorMsg.error pos ("TYPE: Not of arrtyp: " ^ Symbol.name typ); (Tr.nilExp, T.BOTTOM) )))
             end
         | trexp (A.RecordExp{fields, typ, pos}) = 
@@ -521,7 +520,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
     end
     
   
-  and transDec (venv : venv) (tenv : tenv) (d : A.dec) (lvl : level) : { venv : venv, tenv : tenv} =
+  and transDec (venv : venv) (tenv : tenv) (d : A.dec) (lvl : level) (break_lab : Temp.label) : { venv : venv, tenv : tenv} =
     let
 
 
@@ -586,10 +585,10 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                   to have all of the function fields inserted int it *)
                   val ars_venv = insert new_venv ars
 
-                  val ty_body = transExp ars_venv tenv body nlvl
+                  val (ty_bodyExp, ty_bodyType) = transExp ars_venv tenv body nlvl break_lab
             in
               (
-              if (checkTypes tenv pos (result, ty_body)) = () then () else ErrorMsg.error pos "TYPE: unexpected result type")
+              if (checkTypes tenv pos (result, ty_bodyType)) = () then () else ErrorMsg.error pos "TYPE: unexpected result type")
             end
 
           fun checkAllFunEntry ([] : ((Symbol.symbol * Env.enventry) * A.exp * (Symbol.symbol * Env.enventry) list * A.pos) list) = ()
@@ -632,7 +631,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
      (case typ of SOME (symbol, pos) => 
      let
       val constraint_type = lookupTy pos symbol tenv
-      val init_type = transExp venv tenv init lvl
+      val (init_exp, init_type) = transExp venv tenv init lvl break_lab
 
        val constraintTypePlease = actual_ty tenv constraint_type
        val initTypeWork = actual_ty tenv init_type
@@ -649,16 +648,16 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
      (*(checkTypes pos (valOf(Symbol.look(tenv, symbol), (transExp venv tenv init) ) ) )*) 
      | NONE =>
          let
-           val ty = transExp venv tenv init lvl
+           val (initExp, initType) = transExp venv tenv init lvl break_lab
            val acc = Translate.allocLocal lvl (!escape)
          in
            (*Translate.printAccess name acc;*) 
-           if nilInitRule (ty, T.NIL)
+           if nilInitRule (initType, T.NIL)
            then
             (ErrorMsg.error pos ("TYPE: Use of nil initializing expression without record type"))
            else ();
           Translate.printAccess name acc; 
-            {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = (transExp venv tenv init lvl), readonly = false, access = acc}), tenv = tenv}
+            {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = initType (*(transExp venv tenv init lvl)*), readonly = false, access = acc}), tenv = tenv}
          end
         )
 

@@ -191,6 +191,8 @@ struct
             TREE.MOVE(TREE.MEM(address), argEx)
           end
         val rec_fields = map allocate exs
+        val numargs = List.length rec_fields
+        val r_fields = TREE.CALL() :: rec_fields
         val rec_seq = seq(rec_fields)
       in 
         Ex(TREE.ESEQ(rec_seq, TREE.TEMP recL)) (*A/*)
