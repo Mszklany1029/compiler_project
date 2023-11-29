@@ -339,7 +339,8 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           let
             val (thenExp, thenTy) = trexp then'
             val thenty = dig thenTy tenv pos []
-            val (testExp, testTy) = trexp test 
+            val (testExp, testTy) = trexp test
+            val ifprinttest = print "IFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n"
           in
           checkInt pos testTy;
           (case thenty
@@ -403,12 +404,13 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             of dec :: ds => (let
                               val {exps = exp2, venv = venv2, tenv = tenv2} = transDec venv tenv dec lvl break_lab
                               val (letexp_exp, letExp_type) = transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos}) lvl break_lab
+                              val test = print "HhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhERE\n"
                             in 
-                              (Tr.nilExp, letExp_type) (*COME BACK FOR TRANS DEC STUF!!!!!!!!*)
+                              (Tr.letExp(exp2, letexp_exp), letExp_type) (*COME BACK FOR TRANS DEC STUF!!!!!!!!*)
                               (*transExp venv2 tenv2 (A.LetExp {decs = ds, body =
                               body, pos = pos}) lvl*)
                             end)
-              | [] => (transExp venv tenv body lvl break_lab)) (*COME BACK AND EDIT THIS PARTTT*)
+              | [] => (print "LLLLLLLLLLLLLLLLLLLLLLLLLLLLETT\n"; transExp venv tenv body lvl break_lab)) (*COME BACK AND EDIT THIS PARTTT*)
         | trexp (A.SeqExp e) = 
             let
               fun seqList_create lseqs =
@@ -700,8 +702,18 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
   end
   (*(ErrorMsg.error 0 "not implemented"; raise ErrorMsg.Error)*)
 
-  fun transProg e = transExp Env.base_venv Env.base_tenv e
-    (Translate.newLevel({parent = Translate.outermost, name = Temp.newlabel(), formals = [(*true*)]}))
+  fun transProg e =
+    let
+      val lvl = (Translate.newLevel({parent = Translate.outermost, name = Temp.newlabel(), formals = [(*true*)]}))
+      val lab = Temp.newlabel()
+    in
+      Tr.frags := []; 
+      transExp Env.base_venv Env.base_tenv e lvl lab
+    end
+
+    (*transExp Env.base_venv Env.base_tenv e (Translate.newLevel({parent =
+    * Translate.outermost, name = Temp.newlabel(), formals = [(*true*)]}))
+    (Temp.newlabel())*)
 end
 
 structure Main = 
@@ -709,8 +721,12 @@ struct
   fun comp fileName =
     let
       val parsed = (Parse.parse fileName)
+
+      val (progExp, progTy) = Semant.transProg(parsed)
+      val prog = Tr.toStm(progExp)
+ 
     in 
-      (FindEscape.findEscape (parsed); Semant.transProg(parsed))
+      ( FindEscape.findEscape (parsed); Printtree.printtree(TextIO.stdOut, prog); Interpret.interpret(prog))
     end
   fun compile (_, [fileName]) = (comp fileName; OS.Process.success)
 end

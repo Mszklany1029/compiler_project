@@ -4,6 +4,7 @@ struct
 
   structure H = HashTable
   structure T = Tree
+  structure Tr = Translate
 
   fun printExp e = Printtree.printtree(TextIO.stdOut, T.EXP e);
 

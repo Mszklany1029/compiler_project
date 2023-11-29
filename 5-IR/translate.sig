@@ -3,13 +3,15 @@ sig
     type level
 	type exp
     type access
-	type frag
+	datatype frag = PROC of { body : Tree.stm, frame : X86Frame.frame}
+                | STRING of Temp.label * string
+
 
 	val frags : frag list ref
 	val toEx : exp -> Tree.exp
 	val toStm : exp -> Tree.stm
 	val toCond : exp -> (Temp.label * Temp.label -> Tree.stm)
-	
+		
     val outermost : level
     val newLevel : { parent : level, name : Temp.label, formals : bool list} -> level
     val formals : level -> access list

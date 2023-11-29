@@ -102,7 +102,7 @@ struct
     fun simpleVar ((a, uselvl) : access * level) : exp  =
       let
         val (defLvl, x86acc) = a
-        val svar = X86Frame.exp (x86acc) (TREE.TEMP(X86Frame.fp))
+        val svar = X86Frame.exp (x86acc) (TREE.TEMP(X86Frame.FP))
         val slink = memWrap(svar, defLvl, uselvl)
       in 
         Ex(slink)
@@ -143,16 +143,20 @@ struct
       end
 
 
-    fun callExp ((fun_lvl, call_lvl, funlab, args) : level * level * Temp.label * exp list) : exp = 
-      let
-        val fun_name = TREE.NAME(funlab)
-        val stat_link = memWrap(TREE.TEMP(X86Frame.fp), fun_lvl, call_lvl)
-        val arg_ex = map toEx args
-        val args_prime = stat_link :: arg_ex
-        val func_call = TREE.CALL(fun_name, args_prime)
-      in
-        Ex(func_call)
-      end
+    fun callExp ((fun_lvl, call_lvl, funlab, args) : level * level * Temp.label * exp list) : exp =
+      case fun_lvl
+        of Outermost => Ex(TREE.CALL(TREE.NAME (funlab), map toEx args))
+         | Level {prev_level = pl, ...} =>
+            (let
+              val fun_name = TREE.NAME(funlab)
+              (*val stat_link = memWrap(TREE.TEMP(X86Frame.FP), fun_lvl, call_lvl)*)
+              val stat_link = memWrap(TREE.TEMP(X86Frame.FP), pl, call_lvl)
+              val arg_ex = map toEx args
+              val args_prime = stat_link :: arg_ex
+              val func_call = TREE.CALL(fun_name, args_prime)
+            in
+              Ex(func_call)
+            end)
       
       
       (*tlab : label for function, lvl1 & lvl2: level of f and level of function
