@@ -61,17 +61,11 @@
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+         (*if checkNil pos ((transExp venv tenv init), T.NIL) then
+       (ErrorMsg.error pos "TYPE : Use of nil initializing expression without
+       record type"; {venv = Symbol.enter(venv, name, Env.VarEntry{ty =
+       T.BOTTOM}), tenv = tenv}) else {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = (transExp venv tenv init)}), tenv = tenv})*)
+    (*check iniital, check supply type is given, update valenv appropriately, var x: recordtype := nil*) 
 
 
 

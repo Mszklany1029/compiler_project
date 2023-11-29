@@ -367,7 +367,8 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             val testint = (checkInt pos test_ty)
             val brLab = Temp.newlabel()
           in
-            break_check := !break_check + 1; (*convertFormatPrint tenv;*)
+            break_check := !break_check + 1; (*c:w
+            onvertFormatPrint tenv;*)
             (case body_ty 
               of T.UNIT => (Tr.nilExp, T.UNIT)
                 | _ => (ErrorMsg.error pos "TYPE: While expression returns non-unit"; (Tr.nilExp, T.BOTTOM)));
@@ -400,7 +401,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
         | trexp (A.LetExp {decs = decs, body, pos}) =
           (case decs
             of dec :: ds => (let
-                              val {venv = venv2, tenv = tenv2} = transDec venv tenv dec lvl break_lab
+                              val {exps = exp2, venv = venv2, tenv = tenv2} = transDec venv tenv dec lvl break_lab
                               val (letexp_exp, letExp_type) = transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos}) lvl break_lab
                             in 
                               (Tr.nilExp, letExp_type) (*COME BACK FOR TRANS DEC STUF!!!!!!!!*)
@@ -520,7 +521,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
     end
     
   
-  and transDec (venv : venv) (tenv : tenv) (d : A.dec) (lvl : level) (break_lab : Temp.label) : { venv : venv, tenv : tenv} =
+  and transDec (venv : venv) (tenv : tenv) (d : A.dec) (lvl : level) (break_lab  : Temp.label) : { exps : Tr.exp list, venv : venv, tenv : tenv} =
     let
 
 
@@ -584,9 +585,10 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                   (* Before checking the body of the expression, we want the value environemnt
                   to have all of the function fields inserted int it *)
                   val ars_venv = insert new_venv ars
-
+                  (*GOOOD TO PRETTY PRINT FUNCTION BODY*)
                   val (ty_bodyExp, ty_bodyType) = transExp ars_venv tenv body nlvl break_lab
             in
+              Tr.procEntryExit({level = nlvl, body = ty_bodyExp});
               (
               if (checkTypes tenv pos (result, ty_bodyType)) = () then () else ErrorMsg.error pos "TYPE: unexpected result type")
             end
@@ -595,7 +597,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             | checkAllFunEntry (((_, fe), b, ars, pos) :: xs) = (checkFunEntry fe ars b pos; checkAllFunEntry xs)
         in
           (checkFunDupes(fs, []);
-        checkAllFunEntry fes; {venv = new_venv, tenv = tenv})
+        checkAllFunEntry fes); {exps = [], venv = new_venv, tenv = tenv}
         end
       
     | trdec(A.TypeDec (ts )) = 
@@ -622,10 +624,8 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
 
     in
         typeDupes (ts, []);
-        tenv_update tenv;
-        (*print "stage 3: ";
-        convertFormatPrint tenv;*) 
-        {venv = venv, tenv = tenv}
+        tenv_update tenv; 
+        {exps = [], venv = venv, tenv = tenv}
     end
     | trdec (A.VarDec ({name, escape, typ, init, pos})) =
      (case typ of SOME (symbol, pos) => 
@@ -636,13 +636,14 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
        val constraintTypePlease = actual_ty tenv constraint_type
        val initTypeWork = actual_ty tenv init_type
        val acc = Translate.allocLocal lvl (!escape)
+       val translate_exp = Tr.assignExp(Tr.simpleVar(acc, lvl), init_exp)
      in
        Translate.printAccess name acc;
        if checkNil pos (constraint_type, init_type) 
-       then (checkTypes tenv pos (constraint_type, init_type); {venv =
-       Symbol.enter(venv, name, Env.VarEntry{ty = (constraint_type), readonly = false, access = acc}), tenv = tenv}) 
-       else (ErrorMsg.error pos "TYPE: Use of nil as initializing expression without record constraint"; {venv = Symbol.enter(venv, name,
-       Env.VarEntry{ty = T.BOTTOM, readonly = false, access = acc}), tenv = tenv})
+       then (checkTypes tenv pos (constraint_type, init_type); 
+       {exps = [translate_exp], venv = Symbol.enter(venv, name, Env.VarEntry{ty = (constraint_type), readonly = false, access = acc}), tenv = tenv})    
+       else (ErrorMsg.error pos "TYPE: Use of nil as initializing expression without record constraint"; 
+       {exps = [translate_exp], venv = Symbol.enter(venv, name, Env.VarEntry{ty = T.BOTTOM, readonly = false, access = acc}), tenv = tenv})
      end
      
      (*(checkTypes pos (valOf(Symbol.look(tenv, symbol), (transExp venv tenv init) ) ) )*) 
@@ -650,6 +651,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
          let
            val (initExp, initType) = transExp venv tenv init lvl break_lab
            val acc = Translate.allocLocal lvl (!escape)
+           val translate_exp = Tr.assignExp(Tr.simpleVar(acc, lvl), initExp)
          in
            (*Translate.printAccess name acc;*) 
            if nilInitRule (initType, T.NIL)
@@ -657,18 +659,10 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             (ErrorMsg.error pos ("TYPE: Use of nil initializing expression without record type"))
            else ();
           Translate.printAccess name acc; 
-            {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = initType (*(transExp venv tenv init lvl)*), readonly = false, access = acc}), tenv = tenv}
+            {exps = [translate_exp], venv = Symbol.enter(venv, name,Env.VarEntry{ ty = initType (*(transExp venv tenv init lvl)*), readonly = false, access = acc}), tenv = tenv}
          end
         )
 
-
-
-
-         (*if checkNil pos ((transExp venv tenv init), T.NIL) then
-       (ErrorMsg.error pos "TYPE : Use of nil initializing expression without
-       record type"; {venv = Symbol.enter(venv, name, Env.VarEntry{ty =
-       T.BOTTOM}), tenv = tenv}) else {venv = Symbol.enter(venv, name,Env.VarEntry{ ty = (transExp venv tenv init)}), tenv = tenv})*)
-    (*check iniital, check supply type is given, update valenv appropriately, var x: recordtype := nil*) 
     in
     trdec d
     end
