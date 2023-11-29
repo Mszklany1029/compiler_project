@@ -48,7 +48,7 @@ struct
 
     fun exp (a : access) (exp : Tree.exp) : Tree.exp = 
       (case a of 
-            InFrame(i) => Tree.BINOP(Tree.PLUS, Tree.MEM(exp), Tree.CONST(i)) (*<---- POSSIBLE SOURCE OF ISSUES*)
+            InFrame(i) => Tree.MEM(Tree.BINOP(Tree.PLUS, exp, Tree.CONST(i))) (*<---- POSSIBLE SOURCE OF ISSUES*)
             (*WRAP WHOLE THING IN TREE.MEM?*)
           | InReg(t) => Tree.TEMP(t))
 end

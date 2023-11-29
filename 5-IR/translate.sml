@@ -94,18 +94,19 @@ struct
       | procEntryExit { level = Outermost, ...} = (print "procEntryExit: impossible"; raise ErrorMsg.Error)
 
 
-    fun memWrap ((e, Level(lvldec), Level(lvlused)) : Tree.exp * level * level) = 
-      (case #eqc lvldec = #eqc lvlused
-        of true => TREE.MEM(e)
-         | false => memWrap(TREE.MEM(e), Level(lvldec), #prev_level lvlused))
-        
+    fun memWrap ((e, lvldec, lvlused) : Tree.exp * level * level) = 
+      (case (lvldec, lvlused) of
+           (Level ldec, Level lused) =>(case #eqc ldec = #eqc lused
+                                          of true => e
+                                           | false => memWrap(TREE.MEM(e), Level(ldec), #prev_level lused)) 
+          | (Outermost, Outermost) => e)
+                    
     fun simpleVar ((a, uselvl) : access * level) : exp  =
       let
         val (defLvl, x86acc) = a
-        val svar = X86Frame.exp (x86acc) (TREE.TEMP(X86Frame.FP))
-        val slink = memWrap(svar, defLvl, uselvl)
+        val svar = X86Frame.exp (x86acc) (memWrap(TREE.TEMP(X86Frame.FP), defLvl, uselvl))
       in 
-        Ex(slink)
+        Ex(svar)
       end
 
     fun fieldVar ((e, i) : exp * int) : exp = 
@@ -208,7 +209,8 @@ struct
       let 
         val ex_tail = List.last exs (*<------- SEQ TAIL! COME BACK MIGHT HAVE TO DROP*)
         (*val exs = drop(exs, )*)
-        val exStms = map toStm exs
+        val neck = List.take(exs, List.length(exs) -1)
+        val exStms = map toStm neck
 
         val seqs = seq exStms
         val return_val = toEx(ex_tail)
@@ -220,7 +222,7 @@ struct
       let
         val lval = toEx e1
         val rval = toEx e2
-        val x = TREE.MOVE(TREE.MEM(lval), rval)
+        val x = TREE.MOVE(lval, rval)
       in 
         Stm(x) (*RETURN STM OR EX??? FIND OUTTT*)
       end
@@ -269,12 +271,13 @@ struct
       let
         val while_test = toCond condition
         val test = Temp.newlabel()
-        val f = Temp.newlabel()
+        val bodylabel = Temp.newlabel()
         val body_exp = toEx body
         (*COME BACK AND FIX WHLIE EXP BELOWWWWW*)
         val s = seq [ 
                       TREE.LABEL test, 
-                      while_test(test, done),
+                      while_test(bodylabel, done),
+                      TREE.LABEL bodylabel, 
                       TREE.EXP body_exp, 
                       TREE.JUMP(TREE.NAME test, [test]),
                       TREE.LABEL done]
@@ -301,18 +304,18 @@ struct
         val body_label = Temp.newlabel()
         val test = Temp.newlabel()
         val done = Temp.newlabel()
+        val increment = Temp.newlabel()
               
         val s = seq [ TREE.MOVE(iterator, loEx), 
                       TREE.MOVE(TREE.TEMP limit, hiEx),
                       enter_test(body_label, done), 
-                      TREE.LABEL body_label, 
-                      (*TREE.MOVE(TREE.TEMP res, bodyEx)*)
+                      TREE.LABEL body_label,
                       TREE.EXP bodyEx, 
+                      loop_test(increment, done),
+                      TREE.LABEL increment, 
                       TREE.MOVE(iterator, TREE.BINOP(TREE.PLUS, iterator, TREE.CONST 1)),
-                      TREE.LABEL test, 
-                      loop_test(body_label, done), 
-                      TREE.LABEL(done)
-                      ]
+                      TREE.JUMP(TREE.NAME body_label, [body_label]),
+                      TREE.LABEL(done) ]
 
         (*val s = seq [ enter_test(initialize, done) (*WHAT TO DO ABOUT LABELS?*),
                       TREE.LABEL initialize,
@@ -344,6 +347,8 @@ struct
       let
         val stmList = map toStm exList
         val s = seq stmList
+        (*val test = print("IN LET EXP: \n")
+        val lTest = print ((Int.toString(List.length exList)) ^ "\n")*)
       in
         Ex(TREE.ESEQ(s, toEx ex1))
       end

@@ -410,7 +410,19 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                               (*transExp venv2 tenv2 (A.LetExp {decs = ds, body =
                               body, pos = pos}) lvl*)
                             end)
-              | [] => (print "LLLLLLLLLLLLLLLLLLLLLLLLLLLLETT\n"; transExp venv tenv body lvl break_lab)) (*COME BACK AND EDIT THIS PARTTT*)
+              | [] => transExp venv tenv body lvl break_lab(*(let
+                          val (letExp_exp, letExp_type) = transExp venv tenv body lvl break_lab
+                          (*val callLET = Tr.letExp([], letExp_exp) *)
+                       in
+                         PrintAbsyn.print(TextIO.stdOut, body);
+                         print "PRETREE \n";
+                        Printtree.printtree(TextIO.stdOut, Tr.toStm(letExp_exp));
+                         print "POSTTREE\n";
+                         (letExp_exp, letExp_type)
+                       end)*))
+
+                  (*(print "LLLLLLLLLLLLLLLLLLLLLLLLLLLLETT\n"; transExp venv
+                  * tenv body lvl break_lab))*) (*COME BACK AND EDIT THIS PARTTT*)
         | trexp (A.SeqExp e) = 
             let
               fun seqList_create lseqs =
@@ -432,6 +444,10 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                         (aSeqExp :: bSeqs, btype)
                       end)
                 val (seqList, stype) = seqList_create e
+              (*val seqLength = print(Int.toString(List.length seqList) ^ "\n")
+              val n = print "\n"
+              val seqP = app (fn l => Printtree.printtree(TextIO.stdOut, Tr.toStm(l))) seqList
+              val n2 = print "\n"*)
             in 
               (Tr.seqExp(seqList), stype)
             end
@@ -538,7 +554,8 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val nlvl = Translate.newLevel{parent = lvl, name = nlab, formals = forms }
               val accs = Translate.formals nlvl
               fun fieldType ({typ, pos, ...} : A.field) = lookupTy pos typ tenv
-              val zipped = ListPair.zip(params, accs)
+              val paramAccs = List.tl(accs)
+              val zipped = ListPair.zip(params, paramAccs)
               val arg_entry = map (fn ({name, typ, pos, ...}, acc) =>
                                               (name, Env.VarEntry { ty = lookupTy pos typ tenv, readonly = false, access = acc}) ) zipped
               (*val check = convertFormatPrint tenv*)
@@ -614,7 +631,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
       (*val temp = print "prelim: "
       val temp = convertFormatPrint prelim_tenv*)
       val tenv = List.foldl(fn ({name, ty, pos}, tv')=>Symbol.enter(tv', name, (transTy prelim_tenv ty)) )tenv ts
-      (*val temp = print "stage 2: "
+      (*val temp = print "stage 2: " 
       val temp = convertFormatPrint tenv*)
       (*COME BACK AND ADD SEEN LIST STUFF*)
       fun tenv_update(tenv : tenv) = List.map (fn {name, ty, pos} => case
@@ -721,12 +738,18 @@ struct
   fun comp fileName =
     let
       val parsed = (Parse.parse fileName)
-
+      val fesc = FindEscape.findEscape (parsed); 
       val (progExp, progTy) = Semant.transProg(parsed)
       val prog = Tr.toStm(progExp)
- 
+      fun fragOut f = 
+        (print "-----------\n" ;
+        case f of 
+              Tr.PROC{body, ...} => Printtree.printtree(TextIO.stdOut, body) 
+            |Tr.STRING _ => ();
+            print "------------\n")
+      val fraginfo = map fragOut (!Tr.frags)
     in 
-      ( FindEscape.findEscape (parsed); Printtree.printtree(TextIO.stdOut, prog); Interpret.interpret(prog))
+      (Printtree.printtree(TextIO.stdOut, prog); Interpret.interpret(prog))
     end
   fun compile (_, [fileName]) = (comp fileName; OS.Process.success)
 end
