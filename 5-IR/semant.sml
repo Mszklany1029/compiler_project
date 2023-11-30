@@ -752,9 +752,9 @@ struct
               Tr.PROC{body, ...} => Printtree.printtree(TextIO.stdOut, body) 
             |Tr.STRING _ => ();
             print "------------\n")
-      val fraginfo = map fragOut (!Tr.frags)
+      (*val fraginfo = map fragOut (!Tr.frags)*)
     in 
-      (Printtree.printtree(TextIO.stdOut, prog); Interpret.interpret(prog))
+      ((*Printtree.printtree(TextIO.stdOut, prog);*) Interpret.interpret(prog))
     end
   fun compile (_, [fileName]) = (comp fileName; OS.Process.success)
 end

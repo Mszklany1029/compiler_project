@@ -1,0 +1,75 @@
+let
+	type arr = array of int
+	type any = {any : int}
+	var buffer := getchar()
+
+	function readint(any: any) : int =
+	 let var i := 0
+		 function isdigit(s : string) : int = 
+			  ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
+		 function skipto() =
+		   while buffer=" " | buffer="\n"
+			 do buffer := getchar()
+	  in skipto();
+		 any.any := isdigit(buffer);
+		 while isdigit(buffer)
+		   do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
+		 i
+	 end
+
+	function printint(i: int) =
+  		let function f(i:int) = if i>0 
+	     	then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   		in if i<0 then (print("-"); f(-i))
+     		else if i>0 then f(i)
+      		else print("0")
+  		end
+
+
+	function isqrt(i : int) = 
+		let
+			var x0 := i/2
+			var x1 := (x0 + (i/x0))/2
+		in 
+			if(i <= 1) then x0 := i
+			else(
+				while (x1 < x0) do (
+					x0 := x1;
+					x1 := (x0 + (i/x0))/2
+				)
+			);
+			x0
+		end
+	
+	function sieve(a : arr, n : int) = 
+		let
+			var limit := isqrt(n)
+			var j := 0
+		in
+			a[0] := 0;
+			a[1] := 0;
+			for i := 2 to limit do(
+				if (a[i] = 1) then(
+					j := (i*i);
+					while(j < n+1) do(
+						a[j] := 0;
+						j := j + i
+					)
+				)
+			);
+			print_sieve(n, a)
+		end
+
+	
+	function print_sieve (n : int, primes : arr) = 
+		for i := 2 to n do(
+			if primes[i] = 1 then (printint(i);print(" "))
+		)
+
+	var n := readint(any)
+	var pnums : arr := arr[n] of 1
+
+
+in
+	sieve(pnums, n)
+end 
