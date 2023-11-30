@@ -28,7 +28,7 @@ sig
 	val intExp : int -> exp
 	val stringExp : string -> exp
 	val callExp : level * level * Temp.label * exp list -> exp
-	val opExp : exp * Absyn.oper * exp -> exp
+	val opExp : exp * Absyn.oper * exp * Types.ty -> exp
 	val recordExp : exp list -> exp
 	val seqExp : exp list -> exp
 	val assignExp : exp * exp -> exp

@@ -1,0 +1,24 @@
+let
+ type any = {any : int}
+ /*var buffer := getchar()*/
+
+ function printint(i: int) =
+    let function f(i:int) = if i>0 
+            then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+    in if i<0 then (print("-"); f(-i))
+        else if i>0 then f(i)
+        else print("0")
+    end
+
+function sumUpTo(n: int) : int = 
+	let var i := i var t := 0 in
+	while i <= n do (t := t+i; i := i+1); t
+	end
+in 
+	let
+		var any := any{any = 0}
+		var sum := sumUpTo(10)
+	in 
+		printint(sum)
+	end
+end

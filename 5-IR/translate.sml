@@ -111,10 +111,13 @@ struct
 
     fun fieldVar ((e, i) : exp * int) : exp = 
       let
-        val offset = TREE.BINOP(TREE.MUL, TREE.CONST(i), TREE.CONST(X86Frame.wordSize))
+        (*val offset = TREE.BINOP(TREE.MUL, TREE.CONST(i), TREE.CONST(X86Frame.wordSize))*)
         (*COME BACKKKKKK: BETTER TO MANUALLY COMPUTE??*)
+        val offset = TREE.CONST(i * X86Frame.wordSize)
         val ex = toEx e
-        val fv = TREE.BINOP(TREE.PLUS, TREE.MEM(ex), offset) (*DBL CHECK MEM!!!!*)
+        val pr = print ("I VAL :" ^ (Int.toString i) ^ "\n") 
+        val fv = TREE.MEM(TREE.BINOP(TREE.PLUS, ex, offset)) (*DBL CHECK MEM!!!!*)
+        val pr2 = print "WHAT ABOUT HERE?\n"
       in
         Ex(fv)
       end
@@ -125,7 +128,7 @@ struct
         val ex2 = toEx index
         (*WHY TWO EXPS AND NOT ONE EXP AND AN INT*)
         val offset = TREE.BINOP(TREE.MUL, ex2, TREE.CONST(X86Frame.wordSize))
-        val subVar = TREE.BINOP(TREE.PLUS, TREE.MEM(ex1), offset)
+        val subVar = TREE.MEM(TREE.BINOP(TREE.PLUS, ex1, offset))
       in
         Ex(subVar)
       end
@@ -162,45 +165,64 @@ struct
       
       (*tlab : label for function, lvl1 & lvl2: level of f and level of function
       * calling f*)
-    fun opExp ((e1, opr, e2) : exp * Absyn.oper * exp) : exp =
+    fun opExp ((e1, opr, e2, ty) : exp * Absyn.oper * exp * Types.ty) : exp =
       let
         val larg = toEx e1
         val rarg = toEx e2
+        val n = print "+++++++++++++++++\n";
+        val check = Printtree.printtree(TextIO.stdOut, toStm(e2))
+        val n2 = print "++++++++++++++++++\n";
       in
-        (case opr of 
-            A.PlusOp => Ex (TREE.BINOP(TREE.PLUS, larg, rarg))
-          | A.MinusOp => Ex (TREE.BINOP(TREE.MINUS, larg, rarg))
-          | A.TimesOp => Ex (TREE.BINOP(TREE.MUL, larg, rarg))
-          | A.DivideOp => Ex (TREE.BINOP(TREE.DIV, larg, rarg))
-          | A.EqOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.EQ, larg, rarg, lab1, lab2))
-          | A.NeqOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.NE, larg, rarg, lab1, lab2))
-          | A.LtOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.LT, larg, rarg, lab1, lab2))
-          | A.LeOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.LE, larg, rarg, lab1, lab2))
-          | A.GtOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.GT, larg, rarg, lab1, lab2))
-          | A.GeOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.GE, larg, rarg, lab1, lab2)))
+        ( case (ty) 
+            of (Types.STRING) => (case opr of
+                                       A.EqOp => Cond (fn (l1, l2) =>
+                                       TREE.CJUMP(TREE.EQ,
+                                       TREE.CALL(TREE.NAME(Temp.namedlabel
+                                       "stringEqual"), [larg, rarg]), TREE.CONST 1, l1, l2))
+                                     | A.NeqOp => Cond(fn (l1, l2) =>
+                                         TREE.CJUMP(TREE.EQ,
+                                         TREE.CALL(TREE.NAME(Temp.namedlabel
+                                         "stringEqual"), [larg, rarg]), TREE.CONST 0, l1, l2)))  
+             | (Types.INT) => (case opr of 
+                    A.PlusOp => Ex (TREE.BINOP(TREE.PLUS, larg, rarg))
+                  | A.MinusOp => Ex (TREE.BINOP(TREE.MINUS, larg, rarg))
+                  | A.TimesOp => Ex (TREE.BINOP(TREE.MUL, larg, rarg))
+                  | A.DivideOp => Ex (TREE.BINOP(TREE.DIV, larg, rarg))
+                  | A.EqOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.EQ, larg, rarg, lab1, lab2))
+                  | A.NeqOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.NE, larg, rarg, lab1, lab2))
+                  | A.LtOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.LT, larg, rarg, lab1, lab2))
+                  | A.LeOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.LE, larg, rarg, lab1, lab2))
+                  | A.GtOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.GT, larg, rarg, lab1, lab2))
+                  | A.GeOp => Cond (fn (lab1, lab2) => TREE.CJUMP(TREE.GE, larg, rarg, lab1, lab2))))
       end
       
-     (*COME BACK AND FIX THESE ALLLL NEED TO BE TUPLES*)     
+     (*COME BACK AND CHECK THIS ONE, COULD BE SOURCE OF ERROR!*)     
     fun recordExp (exs : exp list) : exp =
       let
         val recL = Temp.newtemp()
         val i : int ref = ref 0
-        fun allocate (arg : exp) = 
+        fun allocate (arg :: args: exp list) =
           let
-            val temp_loc = Temp.newtemp()
+            (*val temp_loc = Temp.newtemp()*)
             val offset = (!i * X86Frame.wordSize) (*<---------THIS NEEDS TOCHANGE???*)
-            val address = TREE.BINOP(TREE.PLUS, TREE.TEMP(temp_loc), TREE.CONST(offset))
+            val address = TREE.BINOP(TREE.PLUS, TREE.TEMP(X86Frame.RV), TREE.CONST(offset))
             val argEx = toEx arg
+            val check = print ("I VALUE: " ^ (Int.toString(!i)) ^ "\n")
           in 
             i := !i + 1;
-            TREE.MOVE(TREE.MEM(address), argEx)
+            TREE.MOVE(TREE.MEM(address), argEx) :: allocate args
           end
-        val rec_fields = map allocate exs
+          | allocate [] = []
+        val rec_fields = allocate exs
         val numargs = List.length(rec_fields)
-        val r_fields = TREE.EXP(TREE.CALL(TREE.NAME(Temp.namedlabel "allocRecord"), [TREE.CONST(numargs)])) :: rec_fields
-        (*val r_fields = toStm(Ex(TREE.CALL(TREE.LABEL(Temp.namedlabel
-        * "allocRecord"), [TREE.CONST(numargs)]))) :: rec_fields*)
-        val rec_seq = seq(r_fields)
+        val record_sequence = [ TREE.MOVE(TREE.TEMP recL,(TREE.CALL(TREE.NAME(Temp.namedlabel "allocRecord"), [TREE.CONST(numargs)]))),
+                                seq(rec_fields)
+                              ]  
+          (*val record_sequence = [ TREE.EXP(TREE.CALL(TREE.NAME(Temp.namedlabel "allocRecord"), [TREE.CONST(numargs)])),
+                                seq(rec_fields)
+                              ]*)  
+                    
+        val rec_seq = seq(record_sequence)
       in 
         Ex(TREE.ESEQ(rec_seq, TREE.TEMP recL)) (*A/*)
       end
@@ -211,6 +233,7 @@ struct
         (*val exs = drop(exs, )*)
         val neck = List.take(exs, List.length(exs) -1)
         val exStms = map toStm neck
+        val test = print "CHECK SEQEXP\n"
 
         val seqs = seq exStms
         val return_val = toEx(ex_tail)

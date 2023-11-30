@@ -1,0 +1,6 @@
+let
+	type any = {any : int}
+	var a := any{any = 7}
+in
+1
+end

@@ -1,8 +1,10 @@
 structure Interpret : sig val interpret : Tree.stm -> unit end =
 struct
 
+
   structure H = HashTable
   structure T = Tree
+  structure Tr = Translate
 
   fun printExp e = Printtree.printtree(TextIO.stdOut, T.EXP e);
 
@@ -169,7 +171,7 @@ struct
               case Symbol.name nm
                 of "print" => (case es'
                     of [T.NAME l] => (print (lookupFragString l); T.CONST 0)
-                     | _ => raise Unsupported)
+                     | _ => (raise Unsupported))
                  | "getchar" => (case es'
                     of [] =>
                       let
@@ -177,7 +179,6 @@ struct
                         val new = Temp.newlabel ()
                         val _ = Tr.frags := Tr.STRING (new, c) :: (!Tr.frags)
                       in
-                      H.insert tempVals (X86Frame.RV, T.NAME new);
                       T.NAME new
                       end
                      | _ => raise Unsupported)
@@ -187,7 +188,6 @@ struct
                           val s = lookupFragString l
                           val ord = Char.ord(String.sub(s, 0))
                       in
-                      H.insert tempVals (X86Frame.RV, T.CONST ord);
                       T.CONST ord
                       end
                      | _ => raise Unsupported)
@@ -199,7 +199,6 @@ struct
                         val new = Temp.newlabel ()
                         val _ = Tr.frags := Tr.STRING (new, chr) :: (!Tr.frags)
                       in
-                      H.insert tempVals (X86Frame.RV, T.NAME new);
                       T.NAME new
                       end
                      | _ => raise Unsupported)
@@ -212,7 +211,6 @@ struct
                         val new = Temp.newlabel ()
                         val _ = Tr.frags := Tr.STRING (new, s1 ^ s2) :: (!Tr.frags)
                       in
-                      H.insert tempVals (X86Frame.RV, T.NAME new);
                       T.NAME new
                       end
                      | _ => raise Unsupported)
@@ -225,11 +223,10 @@ struct
                     (
                     alloced := i * X86Frame.wordSize + !alloced;
                     app (fn m => H.insert memVals (m, v)) locs;
-                    H.insert tempVals (X86Frame.RV, T.CONST start);
                     T.CONST start
                     )
                     end
-                   | _ => raise Unsupported)
+                   | _ => (raise Unsupported))
                  | "allocRecord" => (case es'
                   of [T.CONST i] =>
                     let
@@ -239,7 +236,6 @@ struct
                     (
                     alloced := i * X86Frame.wordSize + !alloced;
                     app (fn m => H.insert memVals (m, T.CONST 0)) locs;
-                    H.insert tempVals (X86Frame.RV, T.CONST start);
                     T.CONST start
                     )
                     end
@@ -250,9 +246,7 @@ struct
                         val s1 = lookupFragString l1
                         val s2 = lookupFragString l2
                       in
-                      if s1 = s2
-                        then (H.insert tempVals (X86Frame.RV, T.CONST 1); T.CONST 1)
-                        else (H.insert tempVals (X86Frame.RV, T.CONST 0); T.CONST 0)
+                      if s1 = s2 then T.CONST 1 else T.CONST 0
                       end
                      | _ => raise Unsupported)
                  | s =>

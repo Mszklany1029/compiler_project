@@ -1,0 +1,7 @@
+let
+	var buffer := getchar()
+
+	var asscii := ord(buffer)
+in 
+e
+end

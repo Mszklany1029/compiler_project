@@ -202,6 +202,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
              | NONE => (ErrorMsg.error pos "SCOPE: no variable found"; (Translate.nilExp, T.BOTTOM)))
        | trVar(A.FieldVar(var, symbol, pos)) = 
         let
+          (*val check = print "FIELDVAR IN SEMANT \n"*)
           val indx : int ref = ref 0 (*COME BACK TO THIS ONE*)
           (*WHAT IS EXP HERE!??!??!?!*)
           val re = trVar var (*GET EXPRESSION OUT OF TRVAR VAR*)
@@ -209,11 +210,12 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           fun fieldLookup (r : T.ty) ([] : (Symbol.symbol * T.ty) list) (pos : A.pos) : Translate.exp *T.ty  = 
             (ErrorMsg.error pos "SCOPE: Field not found in record instance";(Translate.nilExp, T.BOTTOM))
             | fieldLookup (r) ((symb, ty) :: fs) (pos) = (if (symbol = symb)
-                                  then (Translate.fieldVar(vExp, !indx), ty) else (indx := !indx + 1; fieldLookup r fs pos))
+                                  then ((print("FVHERE: " ^
+                                  (Int.toString(!indx))^ "\n")); (Translate.fieldVar(vExp, !indx), ty)) else (indx := !indx + 1; fieldLookup r fs pos))
             
         in 
           (case (actual_ty tenv (dig reType tenv pos []))
-            of (r as (T.RECORD (fs, _))) => (fieldLookup r fs pos)
+            of (r as (T.RECORD (fs, _))) => (fieldLookup r (List.rev fs) pos)
               | _ => (ErrorMsg.error pos "SCOPE: Var is not a record"; (Translate.nilExp, T.BOTTOM)))
         end
       | trVar(A.SubscriptVar(var, exp, pos)) =
@@ -258,7 +260,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             in
               checkInt pos leftType; 
               checkInt pos rightType;
-              (Tr.opExp(leftExp, A.PlusOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.PlusOp, rightExp, leftType), T.INT)
             end
         | trexp (A.OpExp { left, oper = A.MinusOp, right, pos} : A.exp) = 
             let
@@ -267,7 +269,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             in
               checkInt pos leftType; 
               checkInt pos rightType;
-              (Tr.opExp(leftExp, A.MinusOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.MinusOp, rightExp, leftType), T.INT)
             end
         | trexp (A.OpExp { left, oper = A.TimesOp, right, pos} : A.exp) = 
             let
@@ -276,7 +278,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             in
               checkInt pos leftType; 
               checkInt pos rightType;
-              (Tr.opExp(leftExp, A.TimesOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.TimesOp, rightExp, leftType), T.INT)
             end
         | trexp (A.OpExp { left, oper = A.DivideOp, right, pos} : A.exp) =
             let
@@ -285,7 +287,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             in
               checkInt pos leftType; 
               checkInt pos rightType;
-              (Tr.opExp(leftExp, A.DivideOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.DivideOp, rightExp, leftType), T.INT)
             end
         | trexp (A.OpExp { left, oper = A.LtOp, right, pos} : A.exp) =
             let
@@ -293,7 +295,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val (rightExp, rightType) = trexp right
             in 
               checkCompArgs pos (leftType, rightType);
-              (Tr.opExp(leftExp, A.LtOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.LtOp, rightExp, leftType), T.INT)
             end
         | trexp (A.OpExp { left, oper = A.GtOp, right, pos} : A.exp) =
             let
@@ -301,7 +303,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val (rightExp, rightType) = trexp right
             in 
               checkCompArgs pos (leftType, rightType);
-              (Tr.opExp(leftExp, A.GtOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.GtOp, rightExp, leftType), T.INT)
             end
         | trexp (A.OpExp { left, oper = A.LeOp, right, pos} : A.exp) =
             let
@@ -309,7 +311,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val (rightExp, rightType) = trexp right
             in
               checkCompArgs pos (leftType, rightType);
-              (Tr.opExp(leftExp, A.LeOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.LeOp, rightExp, leftType), T.INT)
             end
         | trexp (A.OpExp { left, oper = A.GeOp, right, pos} : A.exp) =
             let
@@ -317,7 +319,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val (rightExp, rightType) = trexp right
             in 
               checkCompArgs pos (leftType, rightType);
-              (Tr.opExp(leftExp, A.GeOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.GeOp, rightExp, leftType), T.INT)
             end
         | trexp (A.OpExp { left, oper = A.EqOp, right, pos} : A.exp) =
             let
@@ -325,15 +327,15 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val (rightExp, rightType) = trexp right
             in
               checkCompArgs pos (leftType, rightType);
-              (Tr.opExp(leftExp, A.EqOp, rightExp), T.INT)
-            end
+              (Tr.opExp(leftExp, A.EqOp, rightExp, leftType), T.INT)  
+              end
         | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp) = 
             let
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType)  = trexp right
             in
               checkCompArgs pos (leftType, rightType);
-              (Tr.opExp(leftExp, A.NeqOp, rightExp), T.INT)
+              (Tr.opExp(leftExp, A.NeqOp, rightExp, leftType), T.INT)
             end
         | trexp (A.IfExp {test, then', else' = NONE, pos} : A.exp) =
           let
@@ -502,6 +504,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                   val (rhandsymb, rhandexpression, recfieldpos) = rightfield
                   val (rhandexpression_exp, rhandexpression_ty) = trexp rhandexpression
                 in 
+                  (*Printtree.printtree(TextIO.stdOut, Tr.toStm(rhandexpression_exp));*)
                   (rhandexpression_exp, rhandexpression_ty)
                 end       
               
@@ -511,9 +514,11 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                 in 
                   rtyp
                 end 
-                
+              val test = print "IN RECORD EXP\n"
               val fieldargs = (map typArgsEval fields) 
               val (fieldArgs_exp, fieldArgs_ty) = ListPair.unzip fieldargs
+              val item = List.hd(fieldArgs_exp)
+              (*val pretety = Printtree.printtree(TextIO.stdOut, Tr.toStm(item))*)
               val namestypes = (map getTypes recfields)
               (*val namestypes = (map getTypes fields)*)
               val nstys = List.rev namestypes (*<-------11/28 WHY AM I REVERSING THIS AGAIN??*)
@@ -671,6 +676,9 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
            val (initExp, initType) = transExp venv tenv init lvl break_lab
            val acc = Translate.allocLocal lvl (!escape)
            val translate_exp = Tr.assignExp(Tr.simpleVar(acc, lvl), initExp)
+           (*val spacer = print "TRANSLTE_DEC HERE\n"
+           val pr = Printtree.printtree(TextIO.stdOut, Tr.toStm(translate_exp))
+           val spac = print "--------\n"*)
          in
            (*Translate.printAccess name acc;*) 
            if nilInitRule (initType, T.NIL)

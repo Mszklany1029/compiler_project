@@ -1,0 +1,6 @@
+let
+	type rectype = {name : string, id : int}
+	var rec := rectype {name = "aname", id = 200}
+in
+if rec.name = "aname" then print("yay")
+end 
