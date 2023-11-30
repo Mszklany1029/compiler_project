@@ -115,9 +115,9 @@ struct
         (*COME BACKKKKKK: BETTER TO MANUALLY COMPUTE??*)
         val offset = TREE.CONST(i * X86Frame.wordSize)
         val ex = toEx e
-        val pr = print ("I VAL :" ^ (Int.toString i) ^ "\n") 
+        (*val pr = print ("I VAL :" ^ (Int.toString i) ^ "\n")*) 
         val fv = TREE.MEM(TREE.BINOP(TREE.PLUS, ex, offset)) (*DBL CHECK MEM!!!!*)
-        val pr2 = print "WHAT ABOUT HERE?\n"
+        (*val pr2 = print "WHAT ABOUT HERE?\n"*)
       in
         Ex(fv)
       end
@@ -169,9 +169,9 @@ struct
       let
         val larg = toEx e1
         val rarg = toEx e2
-        val n = print "+++++++++++++++++\n";
-        val check = Printtree.printtree(TextIO.stdOut, toStm(e2))
-        val n2 = print "++++++++++++++++++\n";
+        (*val n = print "+++++++++++++++++\n";*)
+        (*val check = Printtree.printtree(TextIO.stdOut, toStm(e2))*)
+        (*val n2 = print "++++++++++++++++++\n";*)
       in
         ( case (ty) 
             of (Types.STRING) => (case opr of
@@ -183,7 +183,7 @@ struct
                                          TREE.CJUMP(TREE.EQ,
                                          TREE.CALL(TREE.NAME(Temp.namedlabel
                                          "stringEqual"), [larg, rarg]), TREE.CONST 0, l1, l2)))  
-             | (Types.INT) => (case opr of 
+             | (_) => (case opr of 
                     A.PlusOp => Ex (TREE.BINOP(TREE.PLUS, larg, rarg))
                   | A.MinusOp => Ex (TREE.BINOP(TREE.MINUS, larg, rarg))
                   | A.TimesOp => Ex (TREE.BINOP(TREE.MUL, larg, rarg))
@@ -207,7 +207,7 @@ struct
             val offset = (!i * X86Frame.wordSize) (*<---------THIS NEEDS TOCHANGE???*)
             val address = TREE.BINOP(TREE.PLUS, TREE.TEMP(X86Frame.RV), TREE.CONST(offset))
             val argEx = toEx arg
-            val check = print ("I VALUE: " ^ (Int.toString(!i)) ^ "\n")
+            (*val check = print ("I VALUE: " ^ (Int.toString(!i)) ^ "\n")*)
           in 
             i := !i + 1;
             TREE.MOVE(TREE.MEM(address), argEx) :: allocate args
@@ -233,8 +233,6 @@ struct
         (*val exs = drop(exs, )*)
         val neck = List.take(exs, List.length(exs) -1)
         val exStms = map toStm neck
-        val test = print "CHECK SEQEXP\n"
-
         val seqs = seq exStms
         val return_val = toEx(ex_tail)
       in

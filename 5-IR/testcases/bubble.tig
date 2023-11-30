@@ -64,7 +64,7 @@ function readint(any: any) : int =
         for i:= 1 to len - 1 do
           ( if a[i - 1] > a[i]
                 then (let var t := a[i - 1] in
-                          swapped := 1
+                          swapped := 1;
                           a[i - 1] := a[i];
                           a[i] := t end)
           )

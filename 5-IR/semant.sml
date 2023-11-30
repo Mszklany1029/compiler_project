@@ -210,8 +210,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
           fun fieldLookup (r : T.ty) ([] : (Symbol.symbol * T.ty) list) (pos : A.pos) : Translate.exp *T.ty  = 
             (ErrorMsg.error pos "SCOPE: Field not found in record instance";(Translate.nilExp, T.BOTTOM))
             | fieldLookup (r) ((symb, ty) :: fs) (pos) = (if (symbol = symb)
-                                  then ((print("FVHERE: " ^
-                                  (Int.toString(!indx))^ "\n")); (Translate.fieldVar(vExp, !indx), ty)) else (indx := !indx + 1; fieldLookup r fs pos))
+                                  then ((Translate.fieldVar(vExp, !indx), ty)) else (indx := !indx + 1; fieldLookup r fs pos))
             
         in 
           (case (actual_ty tenv (dig reType tenv pos []))
@@ -326,7 +325,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType) = trexp right
             in
-              checkCompArgs pos (leftType, rightType);
+              checkEqArgs pos (leftType, rightType);
               (Tr.opExp(leftExp, A.EqOp, rightExp, leftType), T.INT)  
               end
         | trexp (A.OpExp { left, oper = A.NeqOp, right, pos} : A.exp) = 
@@ -334,7 +333,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
               val (leftExp, leftType) = trexp left
               val (rightExp, rightType)  = trexp right
             in
-              checkCompArgs pos (leftType, rightType);
+              checkEqArgs pos (leftType, rightType);
               (Tr.opExp(leftExp, A.NeqOp, rightExp, leftType), T.INT)
             end
         | trexp (A.IfExp {test, then', else' = NONE, pos} : A.exp) =
@@ -342,7 +341,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             val (thenExp, thenTy) = trexp then'
             val thenty = dig thenTy tenv pos []
             val (testExp, testTy) = trexp test
-            val ifprinttest = print "IFFFFFFFFFFFFFFFFFFFFFFFFFFFFF\n"
           in
           checkInt pos testTy;
           (case thenty
@@ -406,7 +404,7 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
             of dec :: ds => (let
                               val {exps = exp2, venv = venv2, tenv = tenv2} = transDec venv tenv dec lvl break_lab
                               val (letexp_exp, letExp_type) = transExp venv2 tenv2 (A.LetExp {decs = ds, body = body, pos = pos}) lvl break_lab
-                              val test = print "HhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhERE\n"
+                              (*val test = print "HhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhERE\n"*)
                             in 
                               (Tr.letExp(exp2, letexp_exp), letExp_type) (*COME BACK FOR TRANS DEC STUF!!!!!!!!*)
                               (*transExp venv2 tenv2 (A.LetExp {decs = ds, body =
@@ -514,7 +512,6 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                 in 
                   rtyp
                 end 
-              val test = print "IN RECORD EXP\n"
               val fieldargs = (map typArgsEval fields) 
               val (fieldArgs_exp, fieldArgs_ty) = ListPair.unzip fieldargs
               val item = List.hd(fieldArgs_exp)
