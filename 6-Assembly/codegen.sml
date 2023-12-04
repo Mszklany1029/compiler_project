@@ -12,9 +12,25 @@ struct
 
         fun intString i = if i >= 0 then Int.toString i else "-" ^ Int.toString (~i)
 
-        and munchStm _ = raise ErrorMsg.Error
+        and munchStm (s : T.stm) = 
+          (case s of 
+                (T.LABEL lbl) => emit(A.LABEL {assem = (Symbol.name lbl) ^ ":\n", lab = lbl })
+              | (T.JUMP (T.LABEL dest, lbls)) => emit(A.JUMP{assem = "jmp `j0" , jump = lbls})
+              | (T.CJUMP (rlp, ex1, ex2, lbl1, lbl2)) => (*STUFF HERE*)
+              | (T.MOVE (data, dest)) => emit(A.OPER {assem = "mov `s0, `d0" , dst = [munchExp(dest)], src = [munchExp(data)] })
+              | (T.EXP ex1) => munchExp(ex1))
 
-        and munchExp _ = raise ErrorMsg.Error
+        and munchExp (e : T.exp) = 
+          (case e of 
+                (T.BINOP (T.PLUS, src, dest)) => result( fn r => emit(A.OPER {assem = "mov `s0, `d0", dst = [r], src = [munchExp(src)]}); emit(A.OPER {assem = "add `s0, `d0", dst = [r], src = [munchExp(dest)]}))
+              | (T.BINOP (T.MINUS, src, dest)) => emit(A.OPER {assem = "sub `s0, `d0", dst = [munchExp(dest)], src = [munchExp(src)]})
+              | (T.BINOP (T.MUL, src, dest)) => emit(A.OPER {assem = "imul `s0, `d0", dst = [munchExp(dest)], src = [munchExp(src)]})
+              | (T.BINOP (T.DIV, src, dest)) => 
+              | (T.MEM ex) => (*STUFF HERE*)
+              | (T.TEMP tmp) => (*STUFFHERE*)
+              | (T.NAME n) => (*STUFF HERE*)
+              | (T.CONST i) => (*DO WE EVEN NEED THIS CASE??*)
+              | (T.CALL (e1, exList)) => (*STUFF HERE*))
     in
     munchStm stm; rev (!ilist)
     end
