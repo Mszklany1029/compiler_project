@@ -1,7 +1,9 @@
-/*Sieve of Eratosthenes is a prime number sieve used to find all prime numbers up to a certain value.*/
-/*Can help generate some prime numbers, perhaps for use with some PRNG?*/
+/*An integer approximation of the square root of some number using Newton's method*/
+/*This programming language must have been designed by Minecraft Steve 'cause it seems to break down at the possibility of a curve.*/
+/*Jokes aside, even an approximation of the square root can still be super useful as we shall see in other testcases*/
 
 let
+
 	type arr = array of int
 	type any = {any : int}
 	var buffer := getchar()
@@ -19,9 +21,6 @@ let
 		   do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
 		 i
 	 end
-
-	var n := readint(any)
-	var pnums : arr := arr[n] of 1
 
 	function printint(i: int) =
   		let function f(i:int) = if i>0 
@@ -46,34 +45,14 @@ let
 			);
 			x0
 		end
-	
-	function sieve(a : arr, n : int) = 
-		let
-			var limit := isqrt(n)
-			var j := 0
-		in
-			a[0] := 0;
-			a[1] := 0;
-			for i := 2 to limit do(
-				if (a[i] = 1) then(
-					j := (i*i);
-					while(j < n+1) do(
-						a[j] := 0;
-						j := j + i
-					)
-				)
-			);
-			print_sieve(n, a)
-		end
-
-	
-	function print_sieve (n : int, primes : arr) = 
-		for i := 2 to n do(
-			if primes[i] = 1 then (printint(i);print(" "))
-		)
-
-
-
-in
-	sieve(pnums, n)
-end 
+		
+in 
+	let
+		var any := any{any = 0}
+		var pr := print("Enter a number to get its integer square root!\n")
+		var num := readint(any)
+		var sqrt := isqrt(num)
+	in 
+		printint(sqrt)
+	end
+end

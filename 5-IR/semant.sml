@@ -606,6 +606,8 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
                   (* Before checking the body of the expression, we want the value environemnt
                   to have all of the function fields inserted int it *)
                   val ars_venv = insert new_venv ars
+                  (*val chck = app (fn (s, _) =>print (Symbol.name(s) ^ " "))
+                  * ars *)
                   (*GOOOD TO PRETTY PRINT FUNCTION BODY*)
                   val (ty_bodyExp, ty_bodyType) = transExp ars_venv tenv body nlvl break_lab
             in
@@ -754,7 +756,7 @@ struct
             print "------------\n")
       (*val fraginfo = map fragOut (!Tr.frags)*)
     in 
-      ((*Printtree.printtree(TextIO.stdOut, prog);*) Interpret.interpret(prog))
+      (Printtree.printtree(TextIO.stdOut, prog); Interpret.interpret(prog))
     end
   fun compile (_, [fileName]) = (comp fileName; OS.Process.success)
 end

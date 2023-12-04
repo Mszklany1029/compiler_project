@@ -205,7 +205,7 @@ struct
           let
             (*val temp_loc = Temp.newtemp()*)
             val offset = (!i * X86Frame.wordSize) (*<---------THIS NEEDS TOCHANGE???*)
-            val address = TREE.BINOP(TREE.PLUS, TREE.TEMP(X86Frame.RV), TREE.CONST(offset))
+            val address = TREE.BINOP(TREE.PLUS, TREE.TEMP(recL), TREE.CONST(offset))
             val argEx = toEx arg
             (*val check = print ("I VALUE: " ^ (Int.toString(!i)) ^ "\n")*)
           in 
@@ -338,19 +338,6 @@ struct
                       TREE.JUMP(TREE.NAME body_label, [body_label]),
                       TREE.LABEL(done) ]
 
-        (*val s = seq [ enter_test(initialize, done) (*WHAT TO DO ABOUT LABELS?*),
-                      TREE.LABEL initialize,
-                      TREE.MOVE(iterator, loEx),
-                      TREE.MOVE(TREE.TEMP limit, hiEx),
-                      TREE.JUMP(TREE.NAME test, [test]),
-                      TREE.LABEL body_label,
-                      (*TREE.EXP bodyEx,*)
-                      TREE.MOVE(TREE.TEMP res, bodyEx),
-                      TREE.MOVE(iterator, TREE.BINOP(TREE.PLUS, iterator, TREE.CONST 1)),
-                      TREE.LABEL test,
-                      loop_test(body_label, done),
-                      TREE.LABEL done
-                      ]*)
       in
         Stm s
         (*Ex(TREE.ESEQ(s, TREE.TEMP res))*)

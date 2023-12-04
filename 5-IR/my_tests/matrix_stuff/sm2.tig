@@ -1,0 +1,59 @@
+let
+	type arr1 = array of int
+	type matrix1 = array of arr1
+
+	var m1 := arr1[3] of 2
+	var n1 := matrix1[4] of m1
+	var set1 := for i := 0 to 3 do n1[i] := arr1[3] of 2
+
+
+
+	type arr2 = array of int
+	type matrix2 = array of arr2
+
+	var m2 := arr2[4] of 1
+	var n2 := matrix2[3] of m2
+	var g2 := for i := 0 to 2 do (
+		let 
+			var arr_i := arr2[4] of 1
+		in 
+			n2[i] := arr_i
+		end)
+
+	var asdf := print("---------------\n")
+	var pr := printint(n2[1][2])
+
+
+	function printint(i: int) =
+		  let function f(i:int) = if i>0 
+				 then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+		   in if i<0 then (print("-"); f(-i))
+			  else if i>0 then f(i)
+			  else print("0")
+		  end
+
+
+
+	function printMat1(mat : matrix1, ndim : int, mdim : int) =
+		for i := 0 to ndim-1 do(
+			for j := 0 to mdim-1 do(
+				printint(n1[i][j]);
+				print(" ")
+				);
+				print("\n")
+			)
+
+	function printMat2(mat : matrix2, ndim : int, mdim : int) =
+		for i := 0 to ndim-1 do(
+			for j := 0 to mdim-1 do(
+				printint(n1[i][j]);
+				print(" ")
+				);
+				print("\n")
+			)
+
+in 
+printMat1(n1, 4, 3);
+print("\n");
+printMat2(n2, 3, 4)
+end

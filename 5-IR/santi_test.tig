@@ -1,0 +1,29 @@
+let
+    type Node = { payload: int, left: Node, right: Node }
+    var graph := Node {payload=2,
+        left=Node {payload = 3,
+            left=Node {payload = 4, left=nil, right=nil},
+            right=Node {payload = 5, left=nil, right=nil} },
+        right=Node {payload=1,
+            left= Node {payload=6, left=nil, right=nil},
+            right= Node {payload = 7, left=nil, right=nil}}
+    }
+
+    function printint(i: int) =
+        let function f(i:int) = if i>0
+            then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+                in if i<0 then f(-i)
+            else if i>0 then f(i)
+                else print("0")
+        end
+    function printNode(l: Node, depth: int) =
+        if l <> nil then
+            (for i:= 1 to depth do (print("-"));
+            printint(l.payload);
+            print("\n");
+            printNode(l.left, depth+1);
+            printNode(l.right, depth+1))
+
+in
+printNode(graph, 0)
+end
