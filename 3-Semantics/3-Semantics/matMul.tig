@@ -1,0 +1,40 @@
+let    
+    type arr = array of int    
+    type matrix = array of arr    
+    
+    var m1 := arr[3] of 0    
+    var n1 := matrix[4] of arr    
+    
+    var m2 := arr[4] of 5    
+    var n2 := matrix[3] of arr    
+    
+    function printint(i: int) =    
+          let function f(i:int) = if i>0     
+                 then (f(i/10); print(chr(i-i/10*10+ord("0"))))    
+           in if i<0 then (print("-"); f(-i))    
+              else if i>0 then f(i)    
+              else print("0")    
+          end    
+    
+    function setupMat(mat : matrix, ndim : int, mdim : int) =     
+            for i := 0 to ndim - 1 do(    
+                for j := 0 to mdim - 1 do(    
+                    mat[i][j] := j    
+                    )    
+                )    
+    
+    function printMat(mat : matrix, ndim : int, mdim : int) =    
+        for i := 0 to ndim-1 do(    
+            for j := 0 to mdim-1 do(    
+                printint(n1[i][j]);    
+                print(" ")    
+                );    
+                print("\n")    
+            )    
+in     
+    setupMat(n1, 4, 3);    
+    printMat(n1, 4, 3);    
+    print("\n");    
+    setupMat(n2, 3, 4);    
+    printMat(n2, 3, 4)    
+end    

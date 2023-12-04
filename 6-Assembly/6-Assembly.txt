@@ -1,0 +1,273 @@
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+Project 6: Assembly
+------------------------------------------------------------------------------
+------------------------------------------------------------------------------
+
+In this project, you will generate assembly code (x86-32), handling both instruction selection and register allocation.
+
+------------------------------------------------------------------------------
+IMPORTANT: This project will be graded on the lab computers. On previous projects, you could likely be fairly
+confident that your project would behave the same on your laptop and the lab computers.
+
+For this project, that is no longer necessarily the case.  Once you get to the point of outputting assembly,
+you must be running on the lab computers to be confident your project is working correctly.
+
+As with previous projects, this project will be graded based on its success at passing a number of tests.
+Grading will be conducted on the lab computers. Please make sure your project works on them.
+------------------------------------------------------------------------------
+
+(1) You are being provided with the following *.sml files:
+    - canon.sml - Implements canonicalization of the Tree IR (see lecture slides 25)
+    - assem.sml - The `instr` datatype, which is intended to represent various assembly instructions.
+    - codegen.sml - A file to implement translation of the Tree IR into a `(Temp.temp instr) list`.
+    - live.sml - A simple liveness analysis.
+    - alloc.sml - A file to implement register allocation.
+    - main.sml - The main file for the compiler, which will tie all the other pieces together.
+
+You will need to add these to your files from previous projects, and update your sources.cm accordingly.
+Comment out or delete the Main structure in semant.sml, as main.sml replaces it. 
+
+You are also being provided with a C file, runtime.c, which contains C implementations of the built in Tiger functions.
+ 
+While you are free to edit anything you want, most of these files can be used as is.  The only files listed above
+that require substantional modification are codegen.sml and alloc.sml.
+
+main.sml will also need to be edited, but only in very minor ways (noted below in the instructions.)
+
+(2) Note the following:
+
+    - You may make the following simplification: assume all variables will be passed on the stack, rather than in temporaries/
+    registers.  Making this simplification should be straightforward.  In X86Frame.newFrame, simply remove any checking on the
+    "escape" field of each argument, and assume that escape is true. 
+
+    This will simplify both register allocation and setting up for/cleaning up after function calls (at the cost of a potential
+    slight efficiency loss.)
+
+    - runtime.c defines a function called "my_getchar", rather than "getchar", to avoid conflicts wityh existing C function names.
+    You will need to update the label name in env.sml accordingly. (Note that the Tiger function itself should still be called "getchar".)
+
+    - If you correctly follow the X86 function calling convention (and you should, or calling out to C functions might not work correctly,)
+    you will eventually encounter some difficulty/misalignment when trying to access arguments.  They do not begin at exactly offset 0.
+    This also affects "chasing the static link" during translation.
+    
+    There is some intentional vagueness in the note above- you should think through where the arguments would end up on the stack, and how you would need
+    to adjust X86Frame.sml and the static link computations in Translation.sml.  In terms of code, the required changes are quite small-
+    this requires more thought than hacking.
+
+    - You will need the main body of compiled Tiger programs to also be added to the frags, with the level name "tigermain".  This will allow the
+    C code to call your generated assembly.
+
+    You can do this by adjusting how you set up the level you generate in transProg, and calling procEntryExit from transProg.
+
+    Here is what my transProg looks like:
+      fun transProg e =
+            let
+            val level = Tr.newLevel { parent = Tr.outermost, name = Temp.namedlabel "tigermain" , formals = []}
+            val (e, _) = transExp NotLoop NONE level E.base_venv E.base_tenv e
+            in
+            Tr.procEntryExit {level = level, body = e}
+            end
+    Note that you might be passing slightly different arguments to transExp, or passing arguments in a different order-
+    so you likely can not directly copy and paste the above.
+
+------------------------------------------------------------------------------
+
+The bulk of the assigment is filling in functions in two files: codegen.sml and alloc.sml.
+
+(3) Begin with codegen.sml.  This file will translate our Tree IR into almost its final form:
+we will have x86 assembly instructions, but will still be using temporaries in place of registers.
+
+The provided assem.sml file contains the following datatype:
+
+  datatype 'a instr = OPER of {assem: string,
+                               dst: 'a list,
+                               src: 'a list}
+				 | JUMP of {assem: string,
+			                jump: Temp.label list}
+                 | LABEL of {assem: string, lab: Temp.label}
+
+JUMP and LABEL should be used to represent jump's and label's in assembly. OPER can be used for all
+other assembly instructions.  (We treat jump's and labels as special because they will require
+special treatment during register allocation.)
+
+The codegen function in codegen.sml takes a stm, and returns a (Temp.temp A.instr) list.  The provided
+"emit" function can be used to easily add instructions to the list of instructions to be returned.
+To implement codegen, you will need to implement munchStm and munchExp.  munchStm "consumes" Tree.stm, and "emits"
+corresponding instructions.  It returns a unit type.  munchExp "consumes" Tree.exp, and may also "emit"
+instructions.  However, munchExp also returns a Temp.temp, corresponding to the value of the expression.
+
+When we get to register allocation, we will need to replace all temporaries with registers.
+But our assembly instructions are being represented as strings- we don't want to have to change these strings later!
+To make this easier to manage, the format function in assem.sml allows the automatic replacement
+of certain placeholders based on the dst, src, and jump lists.  For example, here is a small
+snippet of my implementation of codegen:
+
+          | munchStm (T.JUMP (T.NAME l, ls)) =
+            emit (A.JUMP { assem = "JMP `j0\n", jump = [l] })
+          | munchStm (T.MOVE (T.TEMP t1, T.TEMP t2)) = 
+            emit (A.OPER { assem = "MOV `s0, `d0\n", dst = [t1], src = [t2] })
+
+The `j0 (at line 84 of this file) will be replaced by the format function to have
+some specified representation of the "l" value in the jump list.
+The `s0 and `d0 (at line 86) will be replaced by representations of t2 and t1, respectively.
+In general, you can write `j#, `s#, or `d# (where # is a constant) to refer to the # value in
+the jump, dst, or src list, respectively. 
+
+After writing codegen.sml you should be able to run the `Main.comp` function,
+and get "assembly" (with temporaries) as output.  Of course, due to the use of temporaries,
+these "assembly" cannot actually be run! But it might be helpful to check, and make sure
+you are getting reasonable looking output.
+
+One of the trickier aspects of codegen is handling functions calls.  When outputing a function call,
+your codegen function must output instructions for the CALLER side of the calling convention
+(we will get to instructions for the callee side of the calling convention later on.)
+
+(4)  live.sml implements a liveness analysis, which works over the instructions generated by
+codegen.sml.  I would encourage you to briefly examine this code, although you do not need to
+modify it.
+
+The result of liveness analysis is an (interval list), where an interval is this record:
+    {temp : Temp.temp, first : int, finish : int}
+Each interval records a temporary, the first (0-indexed) instruction that uses that temporary,
+and the last (finish) instruction that uses that temporary.  The list is organized in order
+of the "first" field (so the interval at index i has a first field less than or equal to the
+interval at position i + 1.)
+
+(4)  alloc.sml is a starting point for a register allocator.  In class, we will discuss a greedy
+strategy for allocating registers.  You should implement this approach as the `allocRecords`
+function.  Given liveness information and a (Temp.temp A.instr) list, allocRecords
+outputs a (F.register A.instr) list.  allocRecords also takes a frame to allow for
+allocating space for spilled temporaries.  To actually build your (F.register A.instr) list,
+allocRecords provides an "emit" function, exactly like the emit function in codegen.
+
+You could use X86Frame.allocLoc to allocate space for spilled variables in your frame,
+but I found it (slightly) nicer to implement a new Frame function:
+    val spillLoc : frame -> int
+However, this is up to you.
+
+(5) Write two function in X86Frame.sml:
+    val prologue : frame -> string
+    val epilogue : frame -> string
+to output X86 instructions for the callee prologue and epilogue of the calling convention.
+
+Also write a function in X86Frame.sml:
+    val string : Temp.label * string -> string
+to output a labeled string in the .data section of an X86 assembly file.
+
+(7) In main.sml:
+    - uncomment lines 26 and 29 (which create function prologues and epilogues)
+    - uncomment lines 22 to 24 and 28, and comment out line 27 (to output X86 with
+    registers rather than with temporaries)
+    - uncomment line 34 and comment out line 35 (to output strings using your new string function.)
+    - uncomment line 63 (ro call gcc on your generated assembly and runtime.c)
+
+-------------------------------------------------------------------------------
+String Comparison Operators - Extra Credit Opportunity
+-------------------------------------------------------------------------------
+The language specification says the following about strings and relational operators:
+    "String comparison: The comparison operators may also be applied to strings.
+    Two strings are equal if their contents are equal; there is no way to distinguish
+    strings whose component characters are the same. Inequality is according to
+    lexicographic order."
+In Project 5, we considered only string equality.  You are being provided
+with a C runtime function only for string equality.
+
+For 10 bonus points, implement support for checking lexiographic order on strings (using >=, >, <, and <=.)
+Distribution of bonus points will be based on passing a number of test cases, which will not
+be provided in advance.
+
+-------------------------------------------------------------------------------
+Code Generator Requirements
+-------------------------------------------------------------------------------
+The basic requirement for the code generator is: you need to implement something that works.
+
+Better code generators will output fewer instructions (this is a little bit of a handwavy
+statement- but true enough for our purposes.) Up to 10 bonus points will be awarded for projects
+that output fewer instructions than a (fairly naive) baseline.
+
+Exact number of bonus points will be awarded based on both improvement over the baseline,
+and overall performance of the class.
+
+-------------------------------------------------------------------------------
+Register Allocation Requirements
+-------------------------------------------------------------------------------
+The basic requirement for register allocation is: you need to implement something that works.
+
+In class, we will discuss a basic approach, and also various extensions/improvements on that
+basic approach.  If you implement any extensions, please include a README file noting your
+improvements to register allocation. (Your README may also refer to comments in the code-
+but even if you have comments, you must include a README so I know to go and look.)
+
+I will award up to 10 bonus points (at my discretion) to projects that implement a
+better-than-bare-bones register allocator.
+
+-------------------------------------------------------------------------------
+Benchmark Submission Requirements
+-------------------------------------------------------------------------------
+In addition to the project itself, you must submit three benchmarks
+(worth one point each), which can be translated into Tree IR without
+syntax/parsing/semantic errors. If the benchmarks require input to terminate,
+you must provide an input file.  You do not need to provide output files.
+
+Per benchmark, I will give 2 bonus points if the benchmarks is an "interesting"
+program.  This is, to some extent, a subjective judgment, but I'm basically looking
+for programs which satisfy at least one of the following criteria:
+    (1) you could imagine using them in a larger, realistic program
+    (2) they implement a known/useful algorithm
+    (3) they solve a (non-trivial) puzzle/riddle
+    (4) they can otherwise be summarised into a higher level description
+
+The provided merge.tig, bubble.tig, queens.tig, sum_loop.tig, and sum_rec.tig all
+fit the above criteria. The provided print_array.tig and cond.tig do not.
+
+You are only required to submit three benchmarks, but I will give up to 10 bonus points
+(if you submit 5 benchmarks which I classify as interesting.)
+
+Adding an explanatory commenta to the top of your program might be helpful in
+justifying its interestingness. 
+
+If you implement support for lexiographic ordering on strings, you may make use of this in your benchmark(s).
+Please try and note in a comment at the top of the file if any of your provided benchmarks require
+string lexiographic ordering.
+
+You may find the following functions and types useful- you are welcome to use them in writing benchmarks (see merge.tig or bubble.tig for example uses):
+
+ type any = {any : int}
+ var buffer := getchar()
+
+function readint(any: any) : int =
+ let var i := 0
+     function isdigit(s : string) : int = 
+		  ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
+     function skipto() =
+       while buffer=" " | buffer="\n"
+         do buffer := getchar()
+  in skipto();
+     any.any := isdigit(buffer);
+     while isdigit(buffer)
+       do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
+     i
+ end
+
+ type list = {first: int, rest: list}
+
+ function readlist() : list =
+    let var any := any{any=0}
+        var i := readint(any)
+     in if any.any
+         then list{first=i,rest=readlist()}
+         else nil
+    end
+
+ function printint(i: int) =
+  let function f(i:int) = if i>0 
+	     then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   in if i<0 then (print("-"); f(-i))
+      else if i>0 then f(i)
+      else print("0")
+  end
+
+ function printlist(l: list) =
+   if l=nil then print("\n")
+   else (printint(l.first); print(" "); printlist(l.rest))
