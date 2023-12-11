@@ -8,7 +8,7 @@ sig
     val formals : frame -> access list
     val allocLocal : frame -> bool -> access
 	val allocFormals : bool -> access
-
+	val spillLoc : frame -> int 
 	val exp : access -> Tree.exp -> Tree.exp
 	val FP : Temp.temp
 	val RV : Temp.temp

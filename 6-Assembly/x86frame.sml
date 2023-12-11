@@ -21,15 +21,16 @@ struct
       end
     fun allocLocal ({frameOff, ...} : frame) escape : access = (*FIND OUT IF THIS PARAMETER SYNTAX IS OKAY*)
       (case escape
-        of true => ((*print "IN HERE IN THE TRUE LOCAL"; print "\n";*) frameOff := !frameOff - wordSize; InFrame(!frameOff + wordSize)) (*NEED TO ADD FOUR TO FRAME OFF HERE???*)
-          | false => ((*print "IN HERE IN THE FALSE LOCAL"; print "\n"; print
-          (Bool.toString (escape));*)InReg(Temp.newtemp())))
-    fun allocFormals (formal_esc : bool) (*(frameAbove : int)*) : access = 
+        of true => (frameOff := !frameOff - wordSize; InFrame(!frameOff + wordSize)) (*NEED TO ADD FOUR TO FRAME OFF HERE???*)
+          | false => (InReg(Temp.newtemp())))
+
+    fun allocFormals (formal_esc : bool) : access = 
       (case formal_esc 
-         of true =>  ((*print "IN TRUE FORM "; print "\n";*) argOffset := wordSize + !argOffset; InFrame(!argOffset - wordSize))
-          (*ORDER
-         HERE MIGHT BE WRONG???*)
-          | false => ((*print "IN FORMAL FALSE"; print "\n";*) InReg(Temp.newtemp()))) (*ORDER*)
+         of true =>  (argOffset := wordSize + !argOffset; InFrame(!argOffset - wordSize))
+          | false => (InReg(Temp.newtemp()))) 
+
+    fun spillLoc ({frameOff, ...} : frame) : int = 
+      (frameOff := !frameOff - wordSize; !frameOff + wordSize)
 
     fun newFrame {name, formals} = 
       let

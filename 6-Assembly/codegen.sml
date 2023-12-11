@@ -16,8 +16,8 @@ struct
           (case s of 
                 (T.LABEL lbl) => emit(A.LABEL {assem = (Symbol.name lbl) ^ ":\n", lab = lbl })
               | (T.JUMP (T.LABEL dest, lbls)) => emit(A.JUMP{assem = "jmp `j0" , jump = lbls})
-              | (T.CJUMP (rlp, ex1, ex2, lbl1, lbl2)) => (*STUFF HERE*)
-              | (T.MOVE (data, dest)) => emit(A.OPER {assem = "mov `s0, `d0" , dst = [munchExp(dest)], src = [munchExp(data)] })
+              | (T.CJUMP (rlp, ex1, ex2, lbl1, lbl2)) => ()(*STUFF HERE*)
+              | (T.MOVE (data, dest)) => emit(A.OPER {assem = "mov `s0, `d0\n" , dst = [munchExp(dest)], src = [munchExp(data)] })
               | (T.EXP ex1) => munchExp(ex1))
 
         and munchExp (e : T.exp) = 
@@ -46,9 +46,19 @@ struct
                     emit(A.OPER {assem = "mov (`s0), `d0", dst =[dest], src = [munchExp(ex)]})
                   end
               | (T.TEMP tmp) => tmp
-              | (T.NAME n) => (*MOVE $LABEL INTO SOME TEMPORARY STILL NEED ASSEMBLYSTUFF HERE*)
-              | (T.CONST i) => (*MOVE $INT USE ABOVE FUNC INTO SOME TEMPORARY DO WE EVEN NEED THIS CASE??*)
-              | (T.CALL (e1, exList)) => (*STUFF HERE*))
+              | (T.NAME n) =>
+                  let
+                    val res = Temp.newtemp()
+                  in 
+                    emit(A.OPER {assem = "mov $`s0 `d0", dst=[res], src=[n]});
+                  end(*MOVE $LABEL INTO SOME TEMPORARY STILL NEED ASSEMBLYSTUFF HERE*)
+              | (T.CONST i) => 
+                  let
+                    val res = Temp.newtemp()
+                  in 
+                    emit(A.OPER {assem = "mov $" ^ intString i ^ " `d0", dst[res], src = []})
+                  end(*MOVE $INT USE ABOVE FUNC INTO SOME TEMPORARY DO WE EVEN NEED THIS CASE??*)
+              | (T.CALL (e1, exList)) => () (*STUFF HERE*))
     in
     munchStm stm; rev (!ilist)
     end

@@ -45,7 +45,41 @@ fun allocRecords (frame : X86Frame.frame) (ins : interval list) (assem : (Temp.t
               (active : interval list) (* Intervals that are currently active, in order of increasing endpoint *)
               ([] : interval list) (* Upcoming intervals, in order of increasing start point*)
               ([] : (int * Temp.temp A.instr) list) (* Upcoming instructions *)
-              : alloced TT.table = raise ErrorMsg.Error
+              : alloced TT.table = 
+              let
+                fun linearScanRegisterAllocation = raise ErrorMsg.Error
+
+                fun expireOldIntervals (i_interval: interval) (j :: actInts : interval list) (u : register list) =
+                  (case #finish j >= #first i_interval 
+                    of true => useable
+                      | false => (case TT.look(aenv, #temp j)
+                                    of SOME(Reg(r)) => (r :: useable;
+                                    expireOldIntervals(i_interval actInts useable))
+                                          | SOME(Spilled(r)) => raise ErrorMsg.Error
+                                          | NONE => raise ErrorMsg.Error ) )
+                  (* look at thing in active list*)
+
+                fun spillAtInterval (i_interval : interval) (actv : interval list) =
+                  let
+                    val spill = List.last actv
+                    val spLoc = F.spillLoc(frame)
+                    val spReg = (case TT.look(aenv, #temp spill)
+                                    of SOME(Reg(r)) => r
+                                          | SOME(Spilled(r)) => raise ErrorMsg.Error
+                                          | NONE => raise ErrorMsg.Error ) 
+
+
+                  in
+                    case (#finish spill > #finish i_interval)
+                      of true => (
+                                    TT.enter(aenv, #temp i_interval, Reg(spReg));
+                                    TT.enter(aenv, #temp spill, Spilled(spLoc));
+                                    insertByFinish(i_interval actv)
+                                  )
+                       | false => (TT.enter(aenv, #temp i_interval, Spilled(spLoc)) )
+                  end
+              in 
+              end
     in
     alloc initMap initArgs [] ins
         (ListPair.zip ((List.tabulate (length assem, fn x => x), assem)));
