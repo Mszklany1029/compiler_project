@@ -39,7 +39,7 @@ type level = Translate.level
 
   fun convertFormatPrint (tenv : tenv) : unit =
       let
-        val list_of_types = Symbol.getList tenv
+        val list_of_types = Symbol.list tenv
         val type_string_list = map typeToStr list_of_types
         val convert = String.concatWith ", " type_string_list
       in

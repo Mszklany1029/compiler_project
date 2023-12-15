@@ -1,4 +1,4 @@
-structure Arcsem = struct
+structure Assem = struct
 
   type reg = string
   type temp = Temp.temp
