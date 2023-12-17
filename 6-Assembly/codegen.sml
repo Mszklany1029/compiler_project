@@ -15,7 +15,7 @@ struct
         and munchStm (s : T.stm) = 
           (case s of 
                 (T.LABEL lbl) => emit(A.LABEL {assem = (Symbol.name lbl) ^ ":\n", lab = lbl })
-              | (T.JUMP (T.NAME dest, lbls)) => emit(A.JUMP{assem = "jmp `j0" , jump = lbls})
+              | (T.JUMP (T.NAME dest, lbls)) => emit(A.JUMP{assem = "jmp `j0\n" , jump = lbls})
               | (T.CJUMP (rlp, ex1, ex2, lbl1, lbl2)) => 
                   let
                     val rlop = (case rlp 
@@ -36,28 +36,28 @@ struct
 
         and munchExp (e : T.exp) = 
           case e of 
-                (T.BINOP (T.PLUS, src, dest)) => result(fn r => (emit(A.OPER {assem = "mov `s0, `d0", dst = [r], src = [munchExp(src)]}); emit(A.OPER {assem = "add `s0, `d0", dst = [r], src = [munchExp(dest)]})))
-              | (T.BINOP (T.MINUS, src, dest)) => result(fn r => (emit(A.OPER {assem = "mov `s0, `d0", dst = [r], src = [munchExp(src)]}); emit(A.OPER {assem = "sub `s0, `d0", dst = [r], src = [munchExp(dest)]})))
-              | (T.BINOP (T.MUL, src, dest)) => result(fn r => (emit(A.OPER {assem = "mov `s0, `d0", dst = [r], src = [munchExp(src)]}); emit(A.OPER {assem = "imul `s0, `d0", dst = [r], src = [munchExp(dest)]})))
+                (T.BINOP (T.PLUS, src, dest)) => result(fn r => (emit(A.OPER {assem = "mov `s0, `d0\n", dst = [r], src = [munchExp(src)]}); emit(A.OPER {assem = "add `s0, `d0\n", dst = [r], src = [munchExp(dest)]})))
+              | (T.BINOP (T.MINUS, src, dest)) => result(fn r => (emit(A.OPER {assem = "mov `s0, `d0\n", dst = [r], src = [munchExp(src)]}); emit(A.OPER {assem = "sub `s0, `d0\n", dst = [r], src = [munchExp(dest)]})))
+              | (T.BINOP (T.MUL, src, dest)) => result(fn r => (emit(A.OPER {assem = "mov `s0, `d0\n", dst = [r], src = [munchExp(src)]}); emit(A.OPER {assem = "imul `s0, `d0\n", dst = [r], src = [munchExp(dest)]})))
               | (T.BINOP (T.DIV, src, dest)) =>
                   let
                     val res = Temp.newtemp()
                   in 
-                    emit(A.OPER{assem = "push %eax", dst = [] , src = []});
-                    emit(A.OPER {assem = "push %edx", dst = [], src = []}); (*RIGHT REGISTER???*)
-                    emit(A.OPER {assem = "mov `s0, %eax", dst = [] , src = [munchExp(src)]});
-                    emit(A.OPER {assem = "cdq", dst = [], src = []});
-                    emit(A.OPER {assem = "idiv `d0" , dst = [munchExp(dest)] , src = []});
-                    emit(A.OPER {assem = "mov %eax, `d0", dst = [res], src = []});
-                    emit(A.OPER {assem = "pop %edx", dst = [], src = []});
-                    emit(A.OPER {assem = "pop %eax", dst = [], src = []});
+                    emit(A.OPER{assem = "push %eax\n", dst = [] , src = []});
+                    emit(A.OPER {assem = "push %edx\n", dst = [], src = []}); (*RIGHT REGISTER???*)
+                    emit(A.OPER {assem = "mov `s0, %eax\n", dst = [] , src = [munchExp(src)]});
+                    emit(A.OPER {assem = "cdq\n", dst = [], src = []});
+                    emit(A.OPER {assem = "idiv `d0\n" , dst = [munchExp(dest)] , src = []});
+                    emit(A.OPER {assem = "mov %eax, `d0\n", dst = [res], src = []});
+                    emit(A.OPER {assem = "pop %edx\n", dst = [], src = []});
+                    emit(A.OPER {assem = "pop %eax\n", dst = [], src = []});
                     res
                   end
               | (T.MEM ex) => 
                   let
                     val dest = Temp.newtemp()
                   in 
-                    emit(A.OPER {assem = "mov (`s0), `d0", dst =[dest], src = [munchExp(ex)]});
+                    emit(A.OPER {assem = "mov (`s0), `d0\n", dst =[dest], src = [munchExp(ex)]});
                     dest
                   end
               | (T.TEMP tmp) => tmp
@@ -73,7 +73,7 @@ struct
                   let
                     val res = Temp.newtemp()
                   in 
-                    emit(A.OPER {assem = "mov $" ^ intString i ^ " `d0", dst = [res], src = []});
+                    emit(A.OPER {assem = "mov $" ^ intString i ^ " `d0\n", dst = [res], src = []});
                     res
                   end(*MOVE $INT USE ABOVE FUNC INTO SOME TEMPORARY DO WE EVEN NEED THIS CASE??*)
               | (T.CALL (T.NAME e1, exList)) => 

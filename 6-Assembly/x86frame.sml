@@ -52,4 +52,48 @@ struct
             InFrame(i) => Tree.MEM(Tree.BINOP(Tree.PLUS, exp, Tree.CONST(i))) (*<---- POSSIBLE SOURCE OF ISSUES*)
             (*WRAP WHOLE THING IN TREE.MEM?*)
           | InReg(t) => Tree.TEMP(t))
+
+
+    fun prologue ({name, formals, frameOff} : frame) : string = 
+      let
+        val off = (List.length formals) * wordSize
+        val prolog_instrs = concat [ "push %ebp\n",
+                              "mov %esp, %ebp\n", 
+                              "sub off %esp", 
+                              "push %ebx\n",
+                              "push %edi\n ",
+                              "push %esi\n"
+                              ]
+      in
+        prolog_instrs
+      end
+
+
+
+    fun epilogue ({name, formals, frameOff} : frame) : string = 
+      let
+        val eprolog_instrs = concat [
+                              "pop %esi\n", 
+                              "pop %edi\n", 
+                              "pop %ebx\n", 
+                              "mov %ebp, %esp", 
+                              "pop %ebp", 
+                              "ret"
+                            ]
+      in
+        eprolog_instrs
+      end
+      
+    fun intString i = if i >= 0 then Int.toString i else "-" ^ Int.toString (~i)
+
+    fun string (lab, str) : string = 
+      let
+        val n = (Symbol.name lab) ^ ":\n"
+        val long = ".long" ^ (intString (String.size str)) ^ "\n"
+        val asc = ".ascii \"" ^ str ^ "\"\n"
+      in
+        n ^ long ^ asc
+      end
+
+
 end

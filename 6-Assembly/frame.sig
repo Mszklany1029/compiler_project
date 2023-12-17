@@ -13,4 +13,7 @@ sig
 	val FP : Temp.temp
 	val RV : Temp.temp
     val printAccess : access -> string
+	val prologue : frame -> string
+	val epilogue : frame -> string
+	val string : Temp.label * string -> string
 end

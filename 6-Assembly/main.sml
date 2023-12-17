@@ -26,21 +26,21 @@ structure Main = struct
          val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
 	       val instrs =   List.concat(map (CodeGen.codegen frame) stms') 
          val format0 = Assem.format(tempname)
-         (* val live = Live.live instrs
+         val live = Live.live instrs
          val _ = print (Live.printLive live)
          val alloced = Alloc.allocRecords frame live instrs
-         val format1 = Assem.format(fn x => x) *)
+         val format1 = Assem.format(fn x => x)
       in
-         (* TextIO.output(out, F.prologue frame); *)
-         app (fn i => TextIO.output(out,format0 i)) instrs
-         (* app (fn i => TextIO.output(out,format1 i)) alloced; *)
-         (* TextIO.output(out, F.epilogue frame) *)
+         TextIO.output(out, F.prologue frame); 
+         (*app (fn i => TextIO.output(out,format0 i)) instrs*)
+         app (fn i => TextIO.output(out,format1 i)) alloced; 
+          TextIO.output(out, F.epilogue frame)
      end
     | emitproc out (Tr.STRING(lab,s)) = () (* TextIO.output(out,s) *)
 
    fun emitstring out (Tr.PROC{body,frame}) = ()
-     | emitstring out (Tr.STRING(lab,s)) = TextIO.output(out,s)
-     (* | emitstring out (Tr.STRING(lab,s)) = TextIO.output(out,X86Frame.string(lab, s)) *)
+     (*| emitstring out (Tr.STRING(lab,s)) = TextIO.output(out,s)*)
+     | emitstring out (Tr.STRING(lab,s)) = TextIO.output(out,X86Frame.string(lab, s))
 
    fun withOpenFile fname f = 
        let val out = TextIO.openOut fname
@@ -67,7 +67,7 @@ structure Main = struct
                             app (emitstring out) frags;
                             TextIO.output(out, "\n.text\n");
                             app (emitproc out) frags))
-           (* val s = OS.Process.system ("gcc -m32 -static runtime.c " ^ filename ^ ".s -o " ^ non_ext) *)
+           val s = OS.Process.system ("gcc -m32 -static runtime.c " ^ filename ^ ".s -o " ^ non_ext)
        in
        ()
        end

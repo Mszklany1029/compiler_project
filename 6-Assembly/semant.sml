@@ -728,11 +728,12 @@ fun dig (t : T.ty) (tenv : tenv) (pos : A.pos) (tys : T.ty list) : T.ty =
 
   fun transProg e =
     let
-      val lvl = (Translate.newLevel({parent = Translate.outermost, name = Temp.newlabel(), formals = [(*true*)]}))
+      val lvl = (Translate.newLevel({parent = Translate.outermost, name = Temp.namedlabel "tigermain", formals = [(*true*)]}))
       val lab = Temp.newlabel()
+      val (e, _) = transExp Env.base_venv Env.base_tenv e lvl lab
     in
-      Tr.frags := []; 
-      transExp Env.base_venv Env.base_tenv e lvl lab
+      (*Tr.frags := [];*) 
+      Tr.procEntryExit {level = lvl, body = e}
     end
 
     (*transExp Env.base_venv Env.base_tenv e (Translate.newLevel({parent =
