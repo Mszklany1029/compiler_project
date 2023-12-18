@@ -130,7 +130,10 @@ fun live opers : interval list =
         val _ = (initRefs [] [] (Temp.newlabel ()) num_ops; findFix S.empty S.empty)
         val _ = createIntervals ()
         in
-        ListMergeSort.sort (fn(t1, t2) => #first t1 > #first t2) (TT.list (!intervals_map))
+        List.filter (fn {temp, ...} => temp <> X86Frame.FP andalso temp <> X86Frame.RV)
+        (ListMergeSort.sort (fn(t1, t2) => #first t1 > #first t2) (TT.list (!intervals_map)))
+        (*ListMergeSort.sort (fn(t1, t2) => #first t1 > #first t2) (TT.list
+        * (!intervals_map))*)
         end
 
   fun printInterval ({ temp, first, finish }) =

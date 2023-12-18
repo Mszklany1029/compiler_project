@@ -58,7 +58,7 @@ def runFiles(folder, expected):
                 else:
                     with open(expected_out_fn, "r") as out_file:
                         correct = out_file.read()
-                        if correct != out:
+                        if correct.strip() != out.strip():
                             print("CORRECT:")
                             print(correct)
                             print("YOUR OUTPUT:")

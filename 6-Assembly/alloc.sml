@@ -49,7 +49,8 @@ fun allocRecords (frame : X86Frame.frame) (ins : interval list) (assem : (Temp.t
               (upcoming : interval list) (* Upcoming intervals, in order of increasing start point*)
               (upIns : (int * Temp.temp A.instr) list) (* Upcoming instructions *) = 
               let
-
+                fun printInts (inter : interval) = print("\n" ^ Temp.makestring(#temp inter) ^ " first: " ^ Int.toString(#first inter) ^ " finish: " ^ Int.toString(#finish inter) ^ " \n") 
+                
                 fun expireOldIntervals (a_aenv : alloced TT.table) (i_interval : interval) (j :: actInts : interval list) (u : register list) =
                   (case #finish j >= #first i_interval 
                     of true => (j :: actInts, u)
@@ -68,43 +69,57 @@ fun allocRecords (frame : X86Frame.frame) (ins : interval list) (assem : (Temp.t
 
                 fun spillAtInterval (a_aenv : alloced TT.table) (i_interval : interval) (actv : interval list) =
                   let
+                    (*val hm = print "IN SPILL??\n"*)
+                    (*val interpi = print("\n " ^ Temp.makestring(#temp * i_interval) ^ "\n")*)
+                    (*val test = app (printInts) actv*)
                     val spill = List.last actv
-                    val mmmmm = print "\nmmmmmm\n"
+                    (*val mmmmm = print "\nmmmmmm\n"*)
                     val spLoc = F.spillLoc(frame)
-                    val spReg = (case TT.look(a_aenv, #temp spill)
-                                    of SOME(Reg(r)) => r
-                                          | SOME(Spilled(r)) => raise ErrorMsg.Error
-                                          | NONE => raise ErrorMsg.Error )
-                    
+                    (*val testsas = print "ETEST HERE\n"*) 
                   in
                     case (#finish spill > #finish i_interval)
                       of true => (
                                   let
+                                    
+                                    val spReg = (case TT.look(a_aenv, #temp spill)
+                                         of SOME(Reg(r)) => r
+                                          | SOME(Spilled(r)) => (print "SPILLED CASE \n"; raise ErrorMsg.Error)
+                                          | NONE => (print "NONE CASE\n"; raise ErrorMsg.Error ))
+                                          
                                     val aenv2  = TT.enter(a_aenv, #temp i_interval, Reg(spReg))
+                                    val removeLst = List.take (actv, (List.length actv)-1)
 
                                   in
-                                    (insertByFinish i_interval actv, TT.enter(aenv2, #temp spill, Spilled(spLoc)))
+                                    (insertByFinish i_interval removeLst, TT.enter(aenv2, #temp spill, Spilled(spLoc)))
                                   end
                                   )
                        | false => (actv, TT.enter(a_aenv, #temp i_interval, Spilled(spLoc)) )
                   end
 
-                fun linearScanRegisterAllocation ((a_aenv, active, [], useable) : alloced TT.table * interval list * interval list * register list) = aenv
+                fun linearScanRegisterAllocation ((a_aenv, a_ctive, [], useable) : alloced TT.table * interval list * interval list * register list) = a_aenv
                   | linearScanRegisterAllocation ((a_aenv, a_ctive, i :: upcoming, u_seable) : alloced TT.table * interval list * interval list * register list) =
                       let
-                        val (a_active, u_us) = expireOldIntervals a_aenv i active u_seable
+                        val (a_active, u_us) = expireOldIntervals a_aenv i a_ctive u_seable
+                         
+                        
                       in
-                        case u_seable
+                        case u_us
                           of u :: us => 
                             let
+                              (*val test = print "U_SEABLE\n"*)
                               val aenv2 = TT.enter(a_aenv, #temp i, Reg(u))
-                              val ins = insertByFinish i a_ctive
+                              val ins = insertByFinish i a_active
+                              (*val inReg = print("\n" ^ Temp.makestring(#temp i ) ^ "<-- inREG\n")*)
+                              (*val isss = app (printInts) ins*)
                             in
-                              linearScanRegisterAllocation(aenv2, ins, upcoming, u_seable)
+                              linearScanRegisterAllocation(aenv2, ins, upcoming, us)
                             end
                            | [] =>
                                let
+                                 (*val test = app (printInts) a_active*)
                                  val (actv, aenv2) = spillAtInterval a_aenv i a_active
+                                 (*val se = print "SEP\n"*)
+                                 (*val hmmh = app (printInts) actv*)
                                in 
                                  linearScanRegisterAllocation(aenv2, actv, upcoming, [])
                                end
@@ -153,19 +168,20 @@ fun allocRecords (frame : X86Frame.frame) (ins : interval list) (assem : (Temp.t
 
 
               in
-                print "\nTEST1\n";
+                (*print "\nTEST1\n";*)
                 linearScanRegisterAllocation (aenv, active, upcoming, useable)
               end
 
-
-              fun loadSpilled (a_aenv : alloced TT.table) (r : register) (i :: tlst : Temp.temp list) : (int option * alloced TT.table) =
+              fun loadSpilled (a_aenv : alloced TT.table) (r : register) ([] : Temp.temp list) : (int option * alloced TT.table) = (NONE, a_aenv)
+                | loadSpilled (a_aenv : alloced TT.table) (r : register) (i :: tlst : Temp.temp list) : (int option * alloced TT.table) =
                 let
                   val allcd = TT.look(a_aenv, i) 
                 in 
                   case allcd 
                     of SOME(Reg(allcd)) => loadSpilled a_aenv r tlst
-                     | SOME(Spilled(allcd)) => (emit(A.OPER{assem = "mov " ^ intString allcd ^ "(%ebp), " ^ r ^ "\n", dst = [], src = []}); print(Temp.makestring i); (SOME(allcd), TT.enter(a_aenv, i, Reg(r)))) 
-                     | NONE =>  raise ErrorMsg.Error
+                     | SOME(Spilled(allcd)) => (emit(A.OPER{assem = "mov " ^ intString allcd ^ "(%ebp), " ^ r ^ "\n", dst = [], src = []}); (*print(Temp.makestring i);*) (SOME(allcd), TT.enter(a_aenv, i, Reg(r)))) 
+                     | NONE =>  (print (Temp.makestring i ^ " <----\n"); raise ErrorMsg.Error)
+
                 end
                 
                 fun storeSpilled (splld : int option) (r : register) =
@@ -177,21 +193,19 @@ fun allocRecords (frame : X86Frame.frame) (ins : interval list) (assem : (Temp.t
                   | convertInstruction (a_aenv : alloced TT.table) (A.LABEL inst : (Temp.temp A.instr)) = emit (A.LABEL inst)
                   | convertInstruction (a_aenv : alloced TT.table) (A.OPER{assem = ass, dst = d, src = s} : (Temp.temp A.instr)) = 
                   let
-                    val p0 = print "\nHERE???\n"
+                    (*val p0 = print "\nHERE???\n"*)
                     fun getRegs tab key = 
                       case TT.look(tab, key) 
                         of SOME(Reg(r)) => r
                          | _ => raise ErrorMsg.Error
 
-
-
-                    val combine = d @ s
-                    val p1 = print "FIRST CHECK\n"
+                    val combine = s @ d
+                    (*val p1 = print "FIRST CHECK\n"*)
                     val (edx_op, new_tab_edx) = loadSpilled a_aenv "%edx" combine
-                    val pp = print "SECOND TEST\n"
+                    (*val pp = print "SECOND TEST\n"*)
                     val (eax_op, new_tab_eax) = loadSpilled new_tab_edx "%eax" combine
                     val emit_edx= emit(A.OPER{assem = ass, dst = map(getRegs new_tab_eax) d  , src = map(getRegs new_tab_eax) s})
-                    val ptest = print "GEt HERE?\n"
+                    (*val ptest = print "GEt HERE?\n"*)
                     val edx2 = storeSpilled edx_op "%edx"
                     val eax2 = storeSpilled eax_op "%eax"
   
@@ -202,7 +216,7 @@ fun allocRecords (frame : X86Frame.frame) (ins : interval list) (assem : (Temp.t
       val scanned_env = alloc initMap initArgs [] ins (ListPair.zip ((List.tabulate (length assem, fn x => x), assem)));
     in
         app (convertInstruction scanned_env) assem;
-        print "ATESTST";
+        (*print "ATESTST";*)
         rev (!ilist)
     end
 

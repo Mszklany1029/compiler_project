@@ -20,11 +20,11 @@ structure Main = struct
 
    fun emitproc out (Tr.PROC{body,frame}) =
      let val _ = print ("emit " ^ Symbol.name (X86Frame.name frame) ^ "\n")
-(*         val _ = Printtree.printtree(out,body); *)
+        (*val _ = Printtree.printtree(out,body);*)
 	       val stms = Canon.linearize body
-(*         val _ = app (fn s => Printtree.printtree(out,s)) stms; *)
+         (*val _ = app (fn s => Printtree.printtree(out,s)) stms;*)
          val stms' = Canon.traceSchedule(Canon.basicBlocks stms)
-	       val instrs =   List.concat(map (CodeGen.codegen frame) stms') 
+	        val instrs =   List.concat(map (CodeGen.codegen frame) stms')
          val format0 = Assem.format(tempname)
          val live = Live.live instrs
          val _ = print (Live.printLive live)
@@ -32,8 +32,8 @@ structure Main = struct
          val format1 = Assem.format(fn x => x)
       in
          TextIO.output(out, F.prologue frame); 
-         (*app (fn i => TextIO.output(out,format0 i)) instrs*)
-         app (fn i => TextIO.output(out,format1 i)) alloced; 
+         (*app (fn i => TextIO.output(out,format0 i)) instrs;*)
+         app (fn i => TextIO.output(out,format1 i)) alloced;
           TextIO.output(out, F.epilogue frame)
      end
     | emitproc out (Tr.STRING(lab,s)) = () (* TextIO.output(out,s) *)
@@ -67,7 +67,7 @@ structure Main = struct
                             app (emitstring out) frags;
                             TextIO.output(out, "\n.text\n");
                             app (emitproc out) frags))
-           val s = OS.Process.system ("gcc -m32 -static runtime.c " ^ filename ^ ".s -o " ^ non_ext)
+           val s = OS.Process.system ("gcc -m32 -static -g runtime.c " ^ filename ^ ".s -o " ^ non_ext)
        in
        ()
        end

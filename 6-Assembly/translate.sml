@@ -98,7 +98,7 @@ struct
       (case (lvldec, lvlused) of
            (Level ldec, Level lused) =>(case #eqc ldec = #eqc lused
                                           of true => e
-                                           | false => memWrap(TREE.MEM(e), Level(ldec), #prev_level lused)) 
+                                           | false => memWrap(TREE.MEM(TREE.BINOP(TREE.PLUS, e, TREE.CONST 8)), Level(ldec), #prev_level lused)) 
           | (Outermost, Outermost) => e)
                     
     fun simpleVar ((a, uselvl) : access * level) : exp  =
