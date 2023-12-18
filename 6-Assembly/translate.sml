@@ -227,7 +227,8 @@ struct
         Ex(TREE.ESEQ(rec_seq, TREE.TEMP recL)) (*A/*)
       end
 
-    fun seqExp (exs : exp list) : exp =
+    fun seqExp([]) : exp = Ex(TREE.CONST 0)
+      | seqExp (exs : exp list) : exp =
       let 
         val ex_tail = List.last exs (*<------- SEQ TAIL! COME BACK MIGHT HAVE TO DROP*)
         (*val exs = drop(exs, )*)

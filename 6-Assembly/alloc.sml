@@ -168,7 +168,7 @@ fun allocRecords (frame : X86Frame.frame) (ins : interval list) (assem : (Temp.t
 
 
               in
-                (*print "\nTEST1\n";*)
+                print "\nTEST1\n";
                 linearScanRegisterAllocation (aenv, active, upcoming, useable)
               end
 

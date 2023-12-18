@@ -7,7 +7,6 @@ in
 if a[2] > 3 then print("ARRAY TRUE 1") else print("ARRAY FALSE 1");
 print("\n");
 a[2] := 1;
-/*if a[2] < 3 then print("HERE")*/
 if a[2] > 3 then print("ARRAY TRUE 2") else print("ARRAY FALSE 2")
 end
 
