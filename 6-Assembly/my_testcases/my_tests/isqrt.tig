@@ -1,0 +1,58 @@
+/*An integer approximation of the square root of some number using Newton's method*/
+/*This programming language must have been designed by Minecraft Steve 'cause it seems to break down at the possibility of a curve.*/
+/*Jokes aside, even an approximation of the square root can still be super useful as we shall see in other testcases*/
+
+let
+
+	type arr = array of int
+	type any = {any : int}
+	var buffer := getchar()
+
+	function readint(any: any) : int =
+	 let var i := 0
+		 function isdigit(s : string) : int = 
+			  ord(buffer)>=ord("0") & ord(buffer)<=ord("9")
+		 function skipto() =
+		   while buffer=" " | buffer="\n"
+			 do buffer := getchar()
+	  in skipto();
+		 any.any := isdigit(buffer);
+		 while isdigit(buffer)
+		   do (i := i*10+ord(buffer)-ord("0"); buffer := getchar());
+		 i
+	 end
+
+	function printint(i: int) =
+  		let function f(i:int) = if i>0 
+	     	then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+   		in if i<0 then (print("-"); f(-i))
+     		else if i>0 then f(i)
+      		else print("0")
+  		end
+
+
+	function isqrt(i : int) : int = 
+		let
+			var x0 := i/2
+			var x1 := (x0 + (i/x0))/2
+		in 
+			if(i <= 1) then x0 := i
+			else(
+				while (x1 < x0) do (
+					x0 := x1;
+					x1 := (x0 + (i/x0))/2
+				)
+			);
+			x0
+		end
+		
+in 
+	let
+		var any := any{any = 0}
+		var pr := print("Enter a number to get its integer square root!\n")
+		var num := readint(any)
+		var sqrt := isqrt(num)
+	in 
+		printint(sqrt)
+	end
+end

@@ -1,0 +1,4 @@
+(for i1 := 0 to 100 do (
+    if i1 = 2 then break else print("LOOP\n")
+);
+print("END OF FOR\n"))

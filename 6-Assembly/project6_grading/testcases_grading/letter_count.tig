@@ -1,0 +1,47 @@
+/*
+    Count the number of each letter/number in a given string. Does
+    not count symbols.
+*/
+let
+    type intArr = array of int
+    var counts : intArr := intArr[ord("Z")] of 0
+    function get_string_from_user () : string =
+        let
+            var workingStr : string := ""
+            var buffer : string := getchar()
+        in
+            while buffer <> "\n" do (
+                workingStr := concat(workingStr, buffer);
+                buffer := getchar()
+            );
+            workingStr
+        end
+    var testStr : string := get_string_from_user()
+    var thisLetterOrd : int := -1
+    function isValidChar (ord_val : int) : int =
+        ((ord_val >= ord("a") & ord_val <= ord("z")) |
+        (ord_val >= ord("A") & ord_val <= ord("Z"))) |
+        (ord_val >= ord("0") & ord_val <= ord("9"))
+    function printint(i: int) =
+    let function f(i:int) = if i>0 
+            then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+        in if i<0 then (print("-"); f(-i))
+        else if i>0 then f(i)
+        else print("0")
+    end
+in
+    for i := 0 to size(testStr)-1 do (
+        thisLetterOrd := ord(substring(testStr, i, 1));
+        if thisLetterOrd >= ord("a") & thisLetterOrd <= ord("z") then
+            thisLetterOrd := thisLetterOrd - 32; /* Convert to uppercase */
+        if isValidChar(thisLetterOrd) then
+            counts[thisLetterOrd] := counts[thisLetterOrd] + 1
+    );
+    for i := 0 to ord("Z") do (
+        if isValidChar(i) then (
+            print(concat(chr(i), ": "));
+            printint(counts[i]);
+            print("\n")
+        )
+    )
+end

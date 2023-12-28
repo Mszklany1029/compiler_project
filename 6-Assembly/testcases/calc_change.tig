@@ -1,0 +1,44 @@
+/*Prints the minimal set of coins (American currency) to make change*/
+let
+
+    type coins = array of int
+    var coin_denoms:coins := coins[4] of 0
+
+    type names = array of string
+    var coin_names:names := names[4] of ""
+    
+    function set_coins(c:coins) = 
+        (c[0] := 1;
+        c[1] := 5;
+        c[2] := 10;
+        c[3] := 25)
+
+    function set_names(c:names) = 
+        (c[0] := "penny\n";
+        c[1] := "nickel\n";
+        c[2] := "dime\n";
+        c[3] := "quarter\n")
+    
+    function calc_change(change: int) = 
+        let 
+            var coin_idx := 3
+            var sum := 0
+        in
+            for i := 0 to 3 do (
+                let
+                    var coins_i := 3 - i
+                in
+                    while (change >= coin_denoms[coins_i]) do (
+                        print(coin_names[coins_i]);
+                        change := change - coin_denoms[coins_i]
+                    )
+                end
+            )
+        end
+
+    var change := 42
+in
+    set_coins(coin_denoms);
+    set_names(coin_names);
+    calc_change(change)
+end

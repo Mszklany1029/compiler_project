@@ -46,16 +46,36 @@ struct
               | (T.BINOP (T.DIV, src, dest)) =>
                   let
                     val res = Temp.newtemp()
+                    val intermedSrc = Temp.newtemp()
+                    val intermedDest = Temp.newtemp()
                   in
                     emit(A.OPER{assem = "#IN DIV\n", dst = [], src = []});
                     emit(A.OPER{assem = "push %eax\n", dst = [] , src = []});
-                    emit(A.OPER {assem = "push %edx\n", dst = [], src = []}); (*RIGHT REGISTER???*)
-                    emit(A.OPER {assem = "mov `s0, %eax\n", dst = [] , src = [munchExp(src)]});
+                    emit(A.OPER{assem = "push %edx\n", dst = [], src = []});
+                    emit(A.OPER {assem = "push %ecx\n", dst = [], src = []}); (*RIGHT REGISTER???*)
+  
+                    emit(A.OPER {assem = "mov `s0, `d0\n", dst = [intermedSrc], src = [munchExp(src)]});
+                    emit(A.OPER {assem = "mov `s0, `d0\n", dst = [intermedDest], src = [munchExp(dest)]});
+
+                    emit(A.OPER {assem = "mov `s0, %eax\n", dst = [], src = [intermedSrc]});
+                    emit(A.OPER {assem = "mov `s0, %ecx\n", dst = [], src = [intermedDest]});
+                    emit(A.OPER {assem = "cdq\n", dst = [], src = []});
+                    emit(A.OPER {assem = "idiv %ecx\n" , dst = [] , src = []});
+ 
+
+                    emit (A.OPER{assem = "pop %ecx\n", src = [], dst = []});
+                    emit (A.OPER{assem = "mov %eax, `d0\n", src = [], dst = [res]});
+                    emit (A.OPER{assem = "pop %edx\n", src = [], dst = []});
+                    emit (A.OPER{assem = "pop %eax\n", src = [], dst = []});
+
+
+                    (*emit(A.OPER {assem = "mov `s0, %eax\n", dst = [] , src = [munchExp(src)]});
                     emit(A.OPER {assem = "cdq\n", dst = [], src = []});
                     emit(A.OPER {assem = "idiv `d0\n" , dst = [munchExp(dest)] , src = []});
+                    emit(A.OPER{assem = "pop %ecx\n", dst = [], src = []});
                     emit(A.OPER {assem = "mov %eax, `d0\n", dst = [res], src = []});
                     emit(A.OPER {assem = "pop %edx\n", dst = [], src = []});
-                    emit(A.OPER {assem = "pop %eax\n", dst = [], src = []});
+                    emit(A.OPER {assem = "pop %eax\n", dst = [], src = []});*)
                     res
                   end
               | (T.MEM ex) => 

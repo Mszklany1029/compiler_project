@@ -28,6 +28,48 @@ int stringEqual(struct string *s, struct string *t)
  return 1;
 }
 
+int stringCompare(struct string *s, struct string *t)
+ {
+	 const unsigned char *sc = s->chars;
+	 const unsigned char *tc = t->chars;
+	 int l = s->length;
+	 while(*sc == *tc){
+		if(l == 0){
+			int tmp = *sc - *tc;
+			//printf("VAL: %d, SC: %d, TC: %d\n", tmp, *sc, *tc);
+			if(tmp == 0){
+				return 0;
+			}else if (tmp < 0){
+				return -1;
+			}else{
+				return 1;
+			}
+			//return *sc - *tc;
+		}
+		sc = sc+1;
+		tc = tc+1;
+		l = l-1;
+	 }
+	 int tmp2 = *sc - *tc;
+	 //printf("VAL: %d, SC: %d, TC: %d\n", tmp2, *sc, *tc);
+	if(l == 0){
+		//printf("0\n");
+		return 0;
+	}else if (*sc < *tc){
+		//printf("-1\n");
+		return -1;
+	}else{
+		//printf("1\n");
+		return 1;
+		}
+	 //return *sc - *tc
+/*
+ if (s->length!=t->length) return 0;
+ for(i=0;i<s->length;i++) if (s->chars[i]!=t->chars[i]) return 0;
+ return 1;*/
+
+ }
+
 void print(struct string *s)
 {int i; unsigned char *p=s->chars;
  for(i=0;i<s->length;i++,p++) {putchar(*p);}

@@ -1,0 +1,35 @@
+/* Boyer finds the majority element in a list in linear time and o(1) space */
+let
+    type arr = array of int
+    function printint(i: int) =
+        let function f(i:int) = if i>0
+                then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+        in if i<0 then (print("-"); f(-i))
+            else if i>0 then f(i)
+            else print("0")
+        end
+
+    function majorityElement(nums: arr) : int =
+        let
+            var candidate := 0
+            var count := 0
+        in
+            ((for i:=0 to 7 do
+                if count = 0
+                  then (candidate := nums[i]; count := 1)
+                  else if candidate = nums[i]
+                          then count := count + 1
+                          else count := count - 1);
+          candidate)
+        end
+    var arr1 := arr [10] of 0
+in
+arr1[0] := 4;
+arr1[1] := 2;
+arr1[2] := 1;
+arr1[3] := 4;
+arr1[4] := 3;
+arr1[5] := 4;
+arr1[6] := 4;
+printint(majorityElement(arr1))
+end

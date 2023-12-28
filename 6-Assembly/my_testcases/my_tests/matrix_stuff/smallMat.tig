@@ -1,0 +1,70 @@
+let
+	type arr1 = array of int
+	type matrix1 = array of arr1
+
+	var m1 := arr1[3] of 0
+	var n1 := matrix1[4] of m1
+	var set1 := for i := 0 to 3 do n1[i] := arr1[3] of 0
+
+	type arr2 = array of int
+	type matrix2 = array of arr2
+
+		
+	function printint(i: int) =
+		  let function f(i:int) = if i>0 
+				 then (f(i/10); print(chr(i-i/10*10+ord("0"))))
+		   in if i<0 then (print("-"); f(-i))
+			  else if i>0 then f(i)
+			  else print("0")
+		  end
+
+	function setupMat(mat : matrix1, ndim : int, mdim : int) = 
+			for i := 0 to ndim - 1 do(
+				for j := 0 to mdim - 1 do(
+					mat[i][j] := j
+					)
+				)
+
+	function printMat1(mat : matrix1, ndim : int, mdim : int) =
+		for i := 0 to ndim-1 do(
+			for j := 0 to mdim-1 do(
+				printint(n1[i][j]);
+				print(" ")
+				);
+				print("\n")
+			)
+	function printMat2(mat : matrix2, ndim : int, mdim : int) =
+		for i := 0 to ndim-1 do(
+			for j := 0 to mdim-1 do(
+				printint(n1[i][j]);
+				print(" ")
+				);
+				print("\n")
+			)
+
+	function multiply (mat1 : matrix1, m : int, n1 : int, mat2 : matrix2, n2 : int, p : int) =
+		let
+			var cols := arr[m] of 0
+			var rmat := matrix[p] of cols
+		in 
+			for i := 0 to m-1 do(
+				for j := 0 to p-1 do(
+					rmat[i][j] := 0;
+					for k := 0 to n1 do(
+						rmat[i][j] := rmat[i][j] + (mat1[i][k] * mat2[k][j])
+					);
+					printint(rmat[i][j]);
+					print(" ")
+				);
+				print("\n")
+			)
+		end
+
+	
+	function multiply_wrapper (mt1 : matrix1, n1 : int, m1 : int, mt2 : matrix2, n2 : int, m2 : int) =
+		if (m1 <> n2 ) then print("ERROR: BAD DIMENSIONS") else multiply(mt1, n1, m1, mt2, n2, m2)
+
+in 
+n1;
+printMat1(n1, 4, 3)
+end

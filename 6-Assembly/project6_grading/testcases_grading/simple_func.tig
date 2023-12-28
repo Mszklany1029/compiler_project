@@ -1,0 +1,5 @@
+let
+    function f(x : string) = print(x)
+in
+f("IN FUNC")
+end

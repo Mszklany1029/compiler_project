@@ -176,13 +176,18 @@ struct
         ( case (ty) 
             of (Types.STRING) => (case opr of
                                        A.EqOp => Cond (fn (l1, l2) =>
-                                       TREE.CJUMP(TREE.EQ,
-                                       TREE.CALL(TREE.NAME(Temp.namedlabel
-                                       "stringEqual"), [larg, rarg]), TREE.CONST 1, l1, l2))
+                                       TREE.CJUMP(TREE.EQ, TREE.CALL(TREE.NAME(Temp.namedlabel "stringEqual"), [larg, rarg]), TREE.CONST 1, l1, l2))
                                      | A.NeqOp => Cond(fn (l1, l2) =>
-                                         TREE.CJUMP(TREE.EQ,
-                                         TREE.CALL(TREE.NAME(Temp.namedlabel
-                                         "stringEqual"), [larg, rarg]), TREE.CONST 0, l1, l2)))  
+                                         TREE.CJUMP(TREE.EQ, TREE.CALL(TREE.NAME(Temp.namedlabel "stringEqual"), [larg, rarg]), TREE.CONST 0, l1, l2))  
+                                    | A.LtOp => Cond(fn (l1, l2) =>
+                                         TREE.CJUMP(TREE.LT, TREE.CALL(TREE.NAME(Temp.namedlabel "stringCompare"), [larg, rarg]), TREE.CONST ~1, l1, l2))
+                                    | A.LeOp => Cond(fn (l1, l2) =>
+                                         TREE.CJUMP(TREE.LE, TREE.CALL(TREE.NAME(Temp.namedlabel "stringCompare"), [larg, rarg]), TREE.CONST ~1, l1, l2)) 
+                                    | A.GtOp => Cond(fn (l1, l2) =>
+                                         TREE.CJUMP(TREE.GT, TREE.CALL(TREE.NAME(Temp.namedlabel "stringCompare"), [larg, rarg]), TREE.CONST 1, l1, l2))
+                                    | A.GeOp => Cond(fn (l1, l2) =>
+                                         TREE.CJUMP(TREE.GE, TREE.CALL(TREE.NAME(Temp.namedlabel "stringCompare"), [larg, rarg]), TREE.CONST 1, l1, l2))) 
+
              | (_) => (case opr of 
                     A.PlusOp => Ex (TREE.BINOP(TREE.PLUS, larg, rarg))
                   | A.MinusOp => Ex (TREE.BINOP(TREE.MINUS, larg, rarg))

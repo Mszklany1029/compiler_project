@@ -106,13 +106,14 @@ struct
         fun str_trans (c : char) = 
           case (Char.ord c) 
             of 34 => "\\\""
+             | 92 => "\\\\"
              | 10 => "\\n"
              | _ => str c
         val convert_str = String.translate(str_trans) stri
         val n = (Symbol.name lab) ^ ":\n"
         val long = ".long " ^ (intString (String.size stri)) ^ "\n"
         val asc = ".ascii \"" ^ convert_str ^ "\" \n"
-      in
+      in        
         n ^ long ^ asc
       end
 
